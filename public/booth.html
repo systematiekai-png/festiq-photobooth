@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fcf8ef">
+<title>Photobooth</title>
+<link rel="icon" href="/festiq-logo.jpg">
+<style>
+:root{--brand:#ff2a93;--pink:#ff2a93;--orange:#ffa41c;--purple:#7c3aed;--blue:#1eb4ff;--cream:#fcf8ef;--ink:#1c1b22;
+  --grad:linear-gradient(135deg,var(--pink),var(--purple));
+  --font:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",-apple-system,system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--cream);color:#fff;overflow:hidden;font-family:var(--font);touch-action:manipulation}
+#app{position:fixed;inset:0}
+video#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#2a2733}
+video#cam.mirror{transform:scaleX(-1)}
+.layer{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;
+  padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
+#app[data-screen=idle] #idle,#app[data-screen=count] #count,#app[data-screen=rec] #rec,
+#app[data-screen=review] #review,#app[data-screen=upload] #upload,#app[data-screen=done] #done,#app[data-screen=error] #error{display:flex}
+/* bovenbalk met logo */
+#top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:max(14px,env(safe-area-inset-top)) 18px 40px;
+  background:linear-gradient(#0008,#0000);z-index:5;pointer-events:none}
+#top>*{pointer-events:auto}
+#brand{display:flex;align-items:center;gap:14px}
+#logo{height:clamp(54px,8vw,84px);width:auto;border-radius:18px;background:var(--cream);box-shadow:0 6px 24px #0004;display:block}
+#evname{font-weight:800;font-size:clamp(16px,2.4vw,26px);text-shadow:0 1px 8px #0009}
+#evmeta{font-size:clamp(12px,1.5vw,16px);opacity:.9;text-shadow:0 1px 8px #0009}
+.iconbtn{background:#ffffffee;border:0;color:var(--ink);width:46px;height:46px;border-radius:50%;font-size:20px;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 16px #0003}
+.iconbtn:active{transform:scale(.94)}
+#toolbtns{display:flex;gap:10px;align-items:center}
+.pillbtn{width:auto;border-radius:999px;padding:0 18px;height:46px;font-size:15px;font-weight:700;font-family:inherit;white-space:nowrap}
+body.kiosk #toolbtns{opacity:0}
+body.kiosk #toolbtns:hover{opacity:1}
+/* knoppen */
+.btn{border:0;border-radius:999px;font-weight:800;font-size:clamp(20px,2.8vw,30px);line-height:1;font-family:inherit;padding:22px 56px;cursor:pointer;background:var(--grad);color:#fff;
+  box-shadow:0 10px 30px #7c3aed55;transition:transform .12s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:#fff;color:var(--ink);box-shadow:0 6px 20px #0002}
+.btn.small{font-size:clamp(18px,2.2vw,24px);padding:16px 36px}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 10px 30px #7c3aed55,0 0 0 0 #ff2a9388}50%{box-shadow:0 10px 30px #7c3aed55,0 0 0 24px #ff2a9300}}
+/* startscherm */
+#idle{justify-content:flex-end;padding-bottom:calc(64px + env(safe-area-inset-bottom));
+  background:radial-gradient(circle at 6% 96%,#1eb4ffcc 0,#1eb4ff00 24%),radial-gradient(circle at 96% 90%,#ffa41ccc 0,#ffa41c00 26%),radial-gradient(circle at 50% 104%,#ff2a93cc 0,#ff2a9300 34%),linear-gradient(#0000 45%,#1c1b2299)}
+#welcome{font-size:clamp(30px,6.4vw,68px);font-weight:900;margin:0 0 24px;text-shadow:0 3px 22px #000b;line-height:1.05}
+/* aftellen */
+#count{background:#0002}
+#num{font-size:min(44vh,44vw);font-weight:900;line-height:1;animation:pop .9s ease-out;background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 6px 26px #0008) drop-shadow(0 0 3px #fff)}
+@keyframes pop{0%{transform:scale(1.6);opacity:0}25%{opacity:1}100%{transform:scale(.9);opacity:.9}}
+#shotinfo{font-size:clamp(20px,3.2vw,34px);font-weight:800;margin-bottom:10px;text-shadow:0 2px 14px #000b}
+#dots{display:flex;gap:12px;margin-top:22px}
+#dots i{width:16px;height:16px;border-radius:50%;background:#ffffff66}
+#dots i.on{background:var(--orange);box-shadow:0 0 0 4px #fff}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
+#flash.go{animation:flash .5s ease-out}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+/* opname */
+#rec{justify-content:flex-start;align-items:center;pointer-events:none}
+#recbadge{margin-top:110px;display:flex;align-items:center;gap:12px;background:#fff;color:var(--ink);padding:12px 24px;border-radius:999px;font-weight:800;font-size:22px;box-shadow:0 6px 24px #0004}
+#recbadge b{width:16px;height:16px;border-radius:50%;background:#ff3b3b;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+#recbar{position:absolute;left:0;bottom:0;height:12px;background:linear-gradient(90deg,var(--pink),var(--orange),var(--blue));width:0}
+/* crème schermen met kleurspetters */
+#review,#upload,#done,#error{color:var(--ink);
+  background:radial-gradient(circle at 0% 0%,#1eb4ff55 0,#1eb4ff00 30%),radial-gradient(circle at 100% 8%,#ff2a9344 0,#ff2a9300 32%),radial-gradient(circle at 96% 100%,#ffa41c66 0,#ffa41c00 32%),radial-gradient(circle at 0% 100%,#7c3aed44 0,#7c3aed00 30%),var(--cream)}
+#app[data-screen=review] #top,#app[data-screen=done] #top,#app[data-screen=upload] #top,#app[data-screen=error] #top{background:none;color:var(--ink)}
+#app[data-screen=review] #evname,#app[data-screen=done] #evname,#app[data-screen=review] #evmeta,#app[data-screen=done] #evmeta{text-shadow:none}
+#app[data-screen=review] #logo,#app[data-screen=done] #logo{box-shadow:none}
+#review{gap:16px;padding-top:96px}
+#player{align-items:center;gap:12px;width:min(92vw,900px);background:#fff;border-radius:999px;padding:6px 18px 6px 8px;box-shadow:0 4px 18px #1c1b2222}
+#player .btn{width:48px;height:48px;padding:0;justify-content:center;font-size:20px;flex:none}
+#seek{flex:1;accent-color:#ff2a93;height:28px}
+#ptime{font-weight:700;font-size:15px;min-width:86px;text-align:right;font-variant-numeric:tabular-nums}
+#result{max-width:min(92vw,900px);max-height:calc(100% - 100px);border-radius:14px;box-shadow:0 14px 50px #1c1b2240;object-fit:contain}
+.row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+#upload,#error{gap:18px}
+.spin{width:64px;height:64px;border-radius:50%;border:7px solid #ff2a9333;border-top-color:var(--pink);border-right-color:var(--orange);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#done{gap:16px}
+#done h2{font-size:clamp(28px,5vw,54px);margin:0;font-weight:900;background:linear-gradient(90deg,var(--pink),var(--orange),var(--purple),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#qrcard{background:#fff;padding:16px;border-radius:26px;box-shadow:0 14px 50px #7c3aed33;border:4px solid transparent;background-image:linear-gradient(#fff,#fff),linear-gradient(135deg,var(--pink),var(--orange),var(--blue));background-origin:border-box;background-clip:padding-box,border-box}
+#qrcard img{display:block;width:min(36vh,58vw);height:min(36vh,58vw)}
+#donehint{font-size:clamp(16px,2.1vw,24px);font-weight:700;max-width:520px}
+#donelink{font-size:14px;opacity:.6;word-break:break-all;max-width:90vw}
+#donebar{width:min(320px,70vw);height:8px;border-radius:4px;background:#1c1b2222;overflow:hidden}
+#donebar i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--orange),var(--blue));width:100%}
+#error p{max-width:520px;font-size:20px;line-height:1.4;font-weight:600}
+</style>
+</head>
+<body>
+<div id="app" data-screen="boot">
+  <video id="cam" autoplay playsinline muted></video>
+
+  <div id="top">
+    <div id="brand"><img id="logo" src="/festiq-wordmark.jpg" alt="Festiq"><div><div id="evname"></div><div id="evmeta"></div></div></div>
+    <div id="toolbtns">
+      <button class="iconbtn pillbtn" id="btnEdit" title="Terug naar Evenement bewerken" aria-label="Evenement bewerken">✎ Evenement bewerken</button>
+      <button class="iconbtn" id="btnFlip" title="Camera wisselen" aria-label="Camera wisselen">⟲</button>
+      <button class="iconbtn" id="btnFull" title="Volledig scherm" aria-label="Volledig scherm">⛶</button>
+    </div>
+  </div>
+
+  <div class="layer" id="idle">
+    <h1 id="welcome"></h1>
+    <button class="btn pulse" id="btnStart">Start</button>
+  </div>
+  
+
+  <div class="layer" id="count">
+    <div id="shotinfo"></div>
+    <div id="num"></div>
+    <div id="dots"></div>
+  </div>
+  <div class="layer" id="rec">
+    <div id="recbadge"><b></b><span id="rectime">REC</span></div>
+    <div id="recbar"></div>
+  </div>
+
+  <div class="layer" id="review">
+    <canvas id="result"></canvas>
+    <video id="resultVideo" style="display:none" loop muted playsinline autoplay></video>
+    <div id="player" style="display:none"><button class="btn ghost small" id="btnPlay" aria-label="Afspelen of pauzeren">⏸</button><input type="range" id="seek" min="0" max="1000" value="0" aria-label="Tijdlijn"><span id="ptime">0:00</span></div>
+    <div class="row">
+      <button class="btn ghost small" id="btnRetake">↺ Opnieuw</button>
+      <button class="btn ghost small" id="btnSound" style="display:none">🔊 Geluid</button>
+      <button class="btn small" id="btnSave">✓ Opslaan &amp; delen</button>
+    </div>
+  </div>
+
+  <div class="layer" id="upload"><div class="spin"></div><div style="font-size:24px;font-weight:800" id="uptext">Even geduld, we maken je fotostrip klaar…</div></div>
+
+  <div class="layer" id="done">
+    <h2 id="doneTitle">Klaar! 🎉</h2>
+    <div id="qrcard"><img id="qr" alt="QR-code"></div>
+    <div id="donehint">Scan de QR-code met je telefoon om je foto te downloaden</div>
+    <div id="donelink"></div>
+    <button class="btn small" id="btnAgain">Nog een keer</button>
+    <div id="donebar"><i></i></div>
+  </div>
+
+  <div class="layer" id="error">
+    <div style="font-size:54px">⚠️</div>
+    <p id="errmsg"></p>
+    <div class="row"><button class="btn small" id="btnErrAction">Opnieuw proberen</button><button class="btn ghost small" id="btnErrBack" style="display:none">Terug</button></div>
+  </div>
+  <div id="flash"></div>
+</div>
+
+<script src="/render.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const app = $('app'), cam = $('cam');
+const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop());
+const params = new URLSearchParams(location.search);
+if (params.has('kiosk')) document.body.classList.add('kiosk');
+
+const { CTX_FILTER, drawFiltered, lum } = PB;
+
+let ev = null, stream = null, facing = 'user', mirror = true, filter = 'none';
+let raws = [], resultBlob = null, resultKind = 'photo', resultURL = null;
+let idleTimer = null, doneTimer = null, cancelFlow = false, audioCtx = null, wakeLock = null;
+let musicBuf = null, frameObj = null;
+const getCtx = () => (audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)());
+
+const GRADS = ['linear-gradient(135deg,#ff2a93,#ffa41c)', 'linear-gradient(135deg,#ffa41c,#ff2a93)', 'linear-gradient(135deg,#7c3aed,#1eb4ff)', 'linear-gradient(135deg,#1eb4ff,#7c3aed)'];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function setScreen(s) { app.dataset.screen = s; app.classList.remove('refilter'); }
+
+function drawBar(ctx, y, w, h) {
+  ctx.fillStyle = ev.brand_color; ctx.fillRect(0, y, w, h);
+  ctx.fillStyle = lum(ev.brand_color) > .62 ? '#111' : '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const text = ev.name + (ev.footer_text ? '  •  ' + ev.footer_text : '');
+  let size = h * .42; ctx.font = `700 ${size}px -apple-system,system-ui,sans-serif`;
+  while (ctx.measureText(text).width > w * .92 && size > 10) { size -= 2; ctx.font = `700 ${size}px -apple-system,system-ui,sans-serif`; }
+  ctx.fillText(text, w / 2, y + h / 2 + 1);
+}
+
+/* ---------- resultaat tekenen (ontwerp + filter) ---------- */
+const curTpl = () => ev.templates[0];
+function renderResult() {
+  const c = $('result');
+  const src = PB.renderStrip(raws, curTpl(), { name: ev.name, footer: ev.footer_text, brand: ev.brand_color }, filter);
+  c.width = src.width; c.height = src.height;
+  c.getContext('2d').drawImage(src, 0, 0);
+}
+
+/* ---------- camera ---------- */
+async function startCamera() {
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nosupport');
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: facing }, width: { ideal: 1920 }, height: { ideal: 1080 }, ...(ev && ev.mode === 'video' ? { frameRate: { ideal: 60 } } : {}) }, audio: false,
+  });
+  cam.srcObject = stream;
+  await cam.play();
+  const s = stream.getVideoTracks()[0].getSettings();
+  mirror = s.facingMode ? s.facingMode === 'user' : facing === 'user';
+  cam.classList.toggle('mirror', mirror);
+}
+function grabFrame() {
+  const scale = Math.min(1, 1920 / cam.videoWidth);
+  const w = Math.round(cam.videoWidth * scale), h = Math.round(cam.videoHeight * scale);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  if (mirror) { x.translate(w, 0); x.scale(-1, 1); }
+  x.drawImage(cam, 0, 0, w, h);
+  return c;
+}
+
+/* ---------- audio + flash ---------- */
+function beep(freq, dur) {
+  try {
+    getCtx();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = freq; o.type = 'sine'; g.gain.value = .15;
+    o.connect(g); g.connect(audioCtx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + dur); o.stop(audioCtx.currentTime + dur);
+  } catch {}
+}
+function flash() { const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); beep(1100, .25); }
+
+/* ---------- flow ---------- */
+async function countdown(n, info, dotsTotal, dotsDone) {
+  setScreen('count');
+  $('shotinfo').textContent = info || '';
+  $('dots').innerHTML = dotsTotal ? Array.from({ length: dotsTotal }, (_, i) => `<i class="${i === dotsDone ? 'on' : ''}"></i>`).join('') : '';
+  for (let i = n; i >= 1; i--) {
+    if (cancelFlow) return false;
+    const el = $('num'); el.textContent = i; el.style.backgroundImage = GRADS[i % GRADS.length]; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    beep(i === 1 ? 880 : 660, .12);
+    await sleep(1000);
+  }
+  return !cancelFlow;
+}
+
+async function startSession() {
+  cancelFlow = false; raws = []; resultBlob = null; clearTimeout(idleTimer);
+  try { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); else beep(1, .01); } catch {}
+  if (ev.mode === 'video') return recordVideo();
+  const shots = ev.strip_shots || 3; // de iPad-booth maakt altijd een fotostrip
+  for (let i = 0; i < shots; i++) {
+    const ok = await countdown(ev.countdown, shots > 1 ? `Foto ${i + 1} van ${shots}` : 'Kijk in de camera!', shots > 1 ? shots : 0, i);
+    if (!ok) return;
+    flash(); raws.push(grabFrame());
+    if (i < shots - 1) { $('num').textContent = ''; await sleep(700); }
+  }
+  showReview();
+}
+
+function showReview() {
+  $('player').style.display = 'none'; $('resultVideo').style.display = 'none'; $('result').style.display = 'block';
+  renderResult(); setScreen('review');
+  app.classList.add('refilter'); $('review').classList.add('refilter');
+  armIdle(90000);
+}
+
+function pickMime(withAudio) {
+  const c = [
+    ...(withAudio ? ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'] : []),
+    'video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+  return c.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+}
+/* Eén opname-pass: tekent frames op een canvas, neemt dat op (met optioneel muziek) tot stop() true geeft. */
+async function recordPass({ w, h, draw, stop, maxSecs, music, monitor, noRecord, musicSecs, bitrate, tick }) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  Object.assign(cv.style, { position: 'fixed', width: '2px', height: '2px', opacity: '0.01', pointerEvents: 'none', left: 0, top: 0 });
+  document.body.appendChild(cv);
+  const x = cv.getContext('2d');
+  const vstream = cv.captureStream(60);
+  let m = null;
+  if (music && musicBuf) {
+    try {
+      const ac = getCtx(); if (ac.state === 'suspended') await ac.resume();
+      const dest = ac.createMediaStreamDestination(), src = ac.createBufferSource(), g = ac.createGain();
+      src.buffer = musicBuf; src.loop = true; g.gain.value = 1;
+      src.connect(g); if (monitor) g.connect(ac.destination);
+      if (!noRecord) { g.connect(dest); dest.stream.getAudioTracks().forEach((t) => vstream.addTrack(t)); }
+      m = { src, g, ac, rec: !noRecord };
+    } catch { m = null; }
+  }
+  const mime = pickMime(!!(m && m.rec));
+  const chunks = [];
+  const rec = new MediaRecorder(vstream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: bitrate || 6e6 });
+  rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data);
+  const t0 = performance.now();
+  let finish; const finished = new Promise((r) => { finish = r; });
+  let running = true;
+  function loop() {
+    if (!running) return;
+    const el = (performance.now() - t0) / 1000;
+    try { draw(x, el); } catch {}
+    if (tick) tick(el);
+    if (cancelFlow || stop(el) || el > maxSecs) { running = false; return finish(el); }
+    requestAnimationFrame(loop);
+  }
+  rec.start(250); loop();
+  if (m) {
+    const t = m.ac.currentTime; m.src.start();
+    const d = musicSecs || maxSecs;
+    m.g.gain.setValueAtTime(1, t + Math.max(0, d - 1.5)); m.g.gain.linearRampToValueAtTime(0, t + d);
+  }
+  const elapsed = await finished;
+  if (m) { try { m.src.stop(); m.src.disconnect(); m.g.disconnect(); } catch {} }
+  const done = new Promise((r) => { rec.onstop = r; });
+  rec.stop(); await done; cv.remove();
+  const type = (rec.mimeType || mime || 'video/webm').split(';')[0];
+  return { blob: new Blob(chunks, { type }), elapsed, hasAudio: !!(m && m.rec) };
+}
+
+/* Slow-motion: kies het venster met de meeste beweging */
+const SLOW_RATE = 0.5;
+function findMotionWindow(motion, secs) {
+  const win = Math.min(3, Math.max(1.5, secs * 0.3));
+  if (secs < win + 1.5 || motion.length < 10) return null;
+  const at = (t) => { let s = 0; for (const p of motion) if (p.t >= t && p.t < t + win) s += p.m; return s; };
+  let best = null, bestS = -1;
+  for (let a = 0.6; a + win <= secs - 0.6; a += 0.1) { const s = at(a); if (s > bestS) { bestS = s; best = a; } }
+  return best == null ? null : { a: best, b: best + win };
+}
+function slowRate(t, wnd) {
+  if (!wnd || t < wnd.a || t > wnd.b) return 1;
+  const r = 0.3, s = Math.max(0, Math.min(1, (t - wnd.a) / r, (wnd.b - t) / r)), e = s * s * (3 - 2 * s);
+  return 1 - (1 - SLOW_RATE) * e;
+}
+function outputDuration(src, wnd) { let d = 0; for (let t = 0; t < src; t += 0.01) d += 0.01 / slowRate(t, wnd); return d; }
+
+async function recordVideo() {
+  if (!window.MediaRecorder) return showError('Video-opname wordt niet ondersteund in deze browser.', false);
+  const ok = await countdown(ev.countdown, 'Maak je klaar!', 0, 0);
+  if (!ok) return;
+  const scale = Math.min(1, 1280 / cam.videoWidth);
+  const w = Math.round(cam.videoWidth * scale), h = Math.round(cam.videoHeight * scale), bar = frameObj ? 0 : Math.round(w * 0.065);
+  const H = h + bar, secs = ev.video_seconds;
+  const overlay = (x) => { if (frameObj) PB.drawVideoFrame(x, w, H, frameObj, { name: ev.name, footer: ev.footer_text }); else drawBar(x, h, w, bar); };
+  const tick = (el) => {
+    $('recbar').style.width = Math.min(100, el / secs * 100) + '%';
+    $('rectime').textContent = 'REC  ' + Math.max(0, Math.ceil(secs - el)) + 's';
+  };
+  setScreen('rec'); beep(1200, .2);
+  let out, outSecs;
+  if (!ev.slowmo) {
+    out = await recordPass({ w, h: H, maxSecs: secs, musicSecs: secs, music: true, monitor: true, bitrate: 5e6, tick,
+      draw: (x) => { drawFiltered(x, cam, null, 0, 0, w, h, filter, mirror); overlay(x); }, stop: (el) => el >= secs });
+    outSecs = secs;
+  } else {
+    // Pass 1: ruwe opname + bewegingsmeting
+    const mc = document.createElement('canvas'); mc.width = 48; mc.height = 27;
+    const mx = mc.getContext('2d', { willReadFrequently: true });
+    let prev = null; const motion = [];
+    const p1 = await recordPass({ w, h, maxSecs: secs, bitrate: 8e6, tick, music: true, monitor: true, noRecord: true, musicSecs: secs, stop: (el) => el >= secs,
+      draw: (x, el) => {
+        drawFiltered(x, cam, null, 0, 0, w, h, filter, mirror);
+        mx.drawImage(cam, 0, 0, 48, 27);
+        const d = mx.getImageData(0, 0, 48, 27).data; let s = 0;
+        if (prev) for (let i = 0; i < d.length; i += 4) s += Math.abs(d[i] - prev[i]) + Math.abs(d[i + 1] - prev[i + 1]) + Math.abs(d[i + 2] - prev[i + 2]);
+        prev = d.slice(); if (s) motion.push({ t: el, m: s });
+      } });
+    if (cancelFlow) return;
+    const srcSecs = p1.elapsed, wnd = findMotionWindow(motion, srcSecs);
+    // Pass 2: afspelen met slow-motion + kader + muziek
+    $('uptext').textContent = wnd ? 'Slow-motion wordt toegevoegd…' : 'Even geduld, je video wordt klaargemaakt…';
+    setScreen('upload');
+    const url1 = URL.createObjectURL(p1.blob);
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.src = url1;
+    Object.assign(v.style, { position: 'fixed', width: '2px', height: '2px', opacity: '0.01', pointerEvents: 'none', left: 0, top: 0 });
+    document.body.appendChild(v);
+    await new Promise((r) => { v.onloadeddata = r; v.onerror = r; setTimeout(r, 4000); });
+    const total = wnd ? outputDuration(srcSecs, wnd) : srcSecs;
+    v.play().catch(() => {});
+    out = await recordPass({ w, h: H, maxSecs: total + 8, musicSecs: total, music: true, bitrate: 6e6,
+      tick: (el) => { $('uptext').dataset.p = Math.min(99, Math.round(el / total * 100)); },
+      draw: (x) => {
+        v.playbackRate = Math.max(0.25, slowRate(v.currentTime, wnd));
+        x.drawImage(v, 0, 0, w, h); overlay(x);
+      },
+      stop: () => v.ended });
+    v.pause(); v.remove(); URL.revokeObjectURL(url1);
+    outSecs = out.elapsed;
+    if (cancelFlow) return;
+  }
+  resultBlob = out.blob; resultKind = 'video';
+  if (resultURL) URL.revokeObjectURL(resultURL);
+  resultURL = URL.createObjectURL(resultBlob);
+  const v = $('resultVideo');
+  v.src = resultURL;
+  v.style.cssText = 'display:block;max-width:min(92vw,900px);max-height:calc(100% - 210px);border-radius:14px;box-shadow:0 10px 60px #000;background:#000';
+  $('result').style.display = 'none';
+  v.muted = true; v.play().catch(() => {});
+  const sb = $('btnSound'); sb.style.display = out.hasAudio ? '' : 'none'; sb.textContent = '🔊 Geluid aan';
+  setupPlayer(v, outSecs);
+  $('review').classList.remove('refilter'); setScreen('review'); armIdle(90000);
+}
+
+/* Afspeler in het beoordeel-scherm: play/pauze + tijdlijn */
+let playerKnownDur = 0;
+const fmtT = (s) => { s = Math.max(0, s || 0); return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'); };
+function setupPlayer(v, knownDur) {
+  playerKnownDur = knownDur; $('player').style.display = 'flex';
+  const dur = () => (isFinite(v.duration) && v.duration > 0 ? v.duration : playerKnownDur);
+  const upd = () => { $('seek').value = String(Math.round((v.currentTime / (dur() || 1)) * 1000)); $('ptime').textContent = fmtT(v.currentTime) + ' / ' + fmtT(dur()); $('btnPlay').textContent = v.paused ? '▶' : '⏸'; };
+  v.ontimeupdate = upd; v.onplay = upd; v.onpause = upd; upd();
+  // MediaRecorder-bestanden missen een duur: forceer die zodat de tijdlijn werkt
+  v.onloadedmetadata = () => {
+    if (!isFinite(v.duration)) {
+      v.currentTime = 1e101;
+      v.addEventListener('timeupdate', function h() { v.removeEventListener('timeupdate', h); v.currentTime = 0; v.play().catch(() => {}); });
+    }
+  };
+}
+
+async function save() {
+  clearTimeout(idleTimer);
+  $('uptext').textContent = ev.mode === 'video' ? 'Even geduld, we slaan je video op…' : 'Even geduld, we maken je fotostrip klaar…';
+  setScreen('upload');
+  try {
+    let blob = resultBlob, kind = 'strip';
+    if (ev.mode !== 'video') {
+      blob = await new Promise((res) => $('result').toBlob(res, 'image/jpeg', 0.92));
+      kind = 'strip';
+    } else kind = 'video';
+    const fd = new FormData();
+    fd.append('kind', kind); fd.append('filter', filter);
+    fd.append('file', blob, 'media');
+    let lastErr;
+    for (let i = 0; i < 3; i++) {
+      try {
+        const r = await fetch(`/api/public/events/${encodeURIComponent(slug)}/upload`, { method: 'POST', body: fd });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { if (r.status < 500) throw Object.assign(new Error(j.error || 'Upload mislukt'), { fatal: true }); throw new Error(j.error || 'Serverfout'); }
+        return showDone(j);
+      } catch (e) { lastErr = e; if (e.fatal) break; await sleep(1200 * (i + 1)); }
+    }
+    throw lastErr;
+  } catch (e) {
+    showError('Opslaan is niet gelukt: ' + (e.message || 'geen verbinding') + '. Controleer het netwerk en probeer het opnieuw.', true);
+  }
+}
+
+function showDone(j) {
+  $('doneTitle').textContent = ev.mode === 'video' ? 'Je video is klaar! 🎬' : 'Je fotostrip is klaar! 🎉';
+  $('donehint').textContent = 'Scan de QR-code met je telefoon om te downloaden';
+  const link = j.share || (location.origin + j.url);
+  $('qr').src = `/api/qr?text=${encodeURIComponent(link)}&fg=%235b21b6`;
+  $('donelink').textContent = link;
+  setScreen('done');
+  const bar = $('donebar').firstElementChild;
+  bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth;
+  bar.style.transition = 'width 30s linear'; bar.style.width = '0%';
+  clearTimeout(doneTimer); doneTimer = setTimeout(goIdle, 30000);
+}
+
+function showError(msg, canRetrySave) {
+  $('errmsg').textContent = msg;
+  const a = $('btnErrAction'), b = $('btnErrBack');
+  if (canRetrySave) { a.textContent = 'Opnieuw proberen'; a.onclick = save; b.style.display = ''; b.onclick = goIdle; }
+  else { a.textContent = 'Terug'; a.onclick = goIdle; b.style.display = 'none'; }
+  setScreen('error');
+}
+
+function goIdle() {
+  cancelFlow = true; clearTimeout(idleTimer); clearTimeout(doneTimer);
+  raws = []; resultBlob = null; $('btnSound').style.display = 'none'; $('player').style.display = 'none'; $('resultVideo').pause();
+  $('review').classList.remove('refilter');
+  setScreen('idle');
+}
+function armIdle(ms) { clearTimeout(idleTimer); idleTimer = setTimeout(goIdle, ms); }
+
+/* ---------- boot ---------- */
+async function boot() {
+  try {
+    const r = await fetch(`/api/public/events/${encodeURIComponent(slug)}`);
+    if (!r.ok) throw new Error('Dit evenement bestaat niet. Controleer de link.');
+    ev = await r.json();
+  } catch (e) { return showError(e.message || 'Kon het evenement niet laden.', false), $('btnErrAction').style.display = 'none'; }
+  document.title = ev.name + ' – Photobooth';
+  document.documentElement.style.setProperty('--brand', ev.brand_color);
+    $('evname').textContent = ev.name;
+  $('evmeta').textContent = [ev.date && new Date(ev.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }), ev.location].filter(Boolean).join(' · ');
+  $('welcome').textContent = ev.welcome_text;
+  $('btnStart').textContent = ev.mode === 'video' ? '🎬 Start 360° video' : '📸 Start fotostrip';
+  if (!ev.templates.length) ev.templates = [{ id: 'x', name: 'Standaard', frame_color: 'brand', bg_color: '#f1f1f7', bg_color2: '#e2e0f0', style: 'plain', aspect: '4:3', photo_radius: 0, frame_radius: 0, tilt: 0, caption: '', show_footer: true, text_color: 'auto', filter: 'none', stickers: [] }];
+  PB.preload(ev.templates);
+  if (ev.mode === 'video') loadVideoExtras();
+  if (!ev.active) {
+    $('errmsg').textContent = 'Deze photobooth is momenteel niet actief.';
+    $('btnErrAction').style.display = 'none'; return setScreen('error');
+  }
+  try { await startCamera(); }
+  catch (e) {
+    const msg = e.message === 'nosupport' || !window.isSecureContext
+      ? 'Camera niet beschikbaar. Open deze pagina via HTTPS (of localhost) in een moderne browser.'
+      : (e.name === 'NotAllowedError' ? 'Geen toegang tot de camera. Sta cameratoegang toe in je browserinstellingen en probeer het opnieuw.' : 'Camera niet gevonden of niet beschikbaar (' + (e.name || 'fout') + ').');
+    $('errmsg').textContent = msg;
+    const a = $('btnErrAction'); a.textContent = 'Opnieuw proberen'; a.onclick = () => location.reload(); $('btnErrBack').style.display = 'none';
+    return setScreen('error');
+  }
+  goIdle();
+  requestWake();
+}
+async function loadVideoExtras() {
+  const f = ev.video_frame;
+  if (f) {
+    if (f.kind === 'image') { const img = await PB.loadFrameImage(f.url); frameObj = img ? { kind: 'image', img } : null; }
+    else frameObj = { kind: 'builtin', id: f.id };
+  }
+  if (ev.music && ev.music.url) {
+    try {
+      const r = await fetch(ev.music.url); const ab = await r.arrayBuffer();
+      musicBuf = await new Promise((res, rej) => getCtx().decodeAudioData(ab, res, rej));
+    } catch (e) { console.warn('Muziek laden mislukt', e); musicBuf = null; }
+  }
+}
+async function requestWake() { try { wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') requestWake(); });
+
+$('btnStart').onclick = startSession;
+$('btnRetake').onclick = () => { goIdle(); setTimeout(startSession, 50); };
+$('btnSave').onclick = save;
+$('btnPlay').onclick = () => { const v = $('resultVideo'); if (v.paused) v.play().catch(() => {}); else v.pause(); };
+$('seek').oninput = () => { const v = $('resultVideo'); const d = isFinite(v.duration) && v.duration > 0 ? v.duration : playerKnownDur; v.currentTime = (+$('seek').value / 1000) * d; };
+$('btnSound').onclick = () => { const v = $('resultVideo'); v.muted = !v.muted; $('btnSound').textContent = v.muted ? '🔊 Geluid aan' : '🔇 Geluid uit'; if (!v.muted) v.play().catch(() => {}); };
+$('btnAgain').onclick = goIdle;
+$('btnEdit').onclick = () => { if (ev) location.href = '/admin#/event/' + ev.id + '/edit'; };
+$('btnFlip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; try { await startCamera(); } catch { facing = facing === 'user' ? 'environment' : 'user'; startCamera().catch(() => {}); } };
+$('btnFull').onclick = () => { const d = document; if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen || (() => {})).call(e); } };
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+boot();
+</script>
+</body>
+</html>
