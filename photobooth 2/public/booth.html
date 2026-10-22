@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#fcf8ef">
+<title>Photobooth</title>
+<link rel="icon" href="/festiq-logo.jpg">
+<style>
+:root{--brand:#ff2a93;--pink:#ff2a93;--orange:#ffa41c;--purple:#7c3aed;--blue:#1eb4ff;--cream:#fcf8ef;--ink:#1c1b22;
+  --grad:linear-gradient(135deg,var(--pink),var(--purple));
+  --font:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",-apple-system,system-ui,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--cream);color:#fff;overflow:hidden;font-family:var(--font);touch-action:manipulation}
+#app{position:fixed;inset:0}
+video#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#2a2733}
+video#cam.mirror{transform:scaleX(-1)}
+video#cam.rot{transform:rotate(180deg)}
+video#cam.rot.mirror{transform:rotate(180deg) scaleX(-1)}
+#btnRot{font-size:13px;font-weight:800;font-family:inherit}
+#btnRot.on{background:var(--pink);color:#fff}
+.layer{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;
+  padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom))}
+#app[data-screen=idle] #idle,#app[data-screen=count] #count,#app[data-screen=rec] #rec,
+#app[data-screen=review] #review,#app[data-screen=upload] #upload,#app[data-screen=done] #done,#app[data-screen=error] #error{display:flex}
+/* bovenbalk met logo */
+#top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:max(14px,env(safe-area-inset-top)) 18px 40px;
+  background:linear-gradient(#0008,#0000);z-index:5;pointer-events:none}
+#top>*{pointer-events:auto}
+#brand{display:flex;align-items:center;gap:14px}
+#logo{height:clamp(54px,8vw,84px);width:auto;border-radius:18px;background:var(--cream);box-shadow:0 6px 24px #0004;display:block}
+#evname{font-weight:800;font-size:clamp(16px,2.4vw,26px);text-shadow:0 1px 8px #0009}
+#evmeta{font-size:clamp(12px,1.5vw,16px);opacity:.9;text-shadow:0 1px 8px #0009}
+.iconbtn{background:#ffffffee;border:0;color:var(--ink);width:46px;height:46px;border-radius:50%;font-size:20px;display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 16px #0003}
+.iconbtn:active{transform:scale(.94)}
+#toolbtns{display:flex;gap:10px;align-items:center}
+.pillbtn{width:auto;border-radius:999px;padding:0 18px;height:46px;font-size:15px;font-weight:700;font-family:inherit;white-space:nowrap}
+body.kiosk #toolbtns{opacity:0}
+body.kiosk #toolbtns:hover{opacity:1}
+/* knoppen */
+.btn{border:0;border-radius:999px;font-weight:800;font-size:clamp(20px,2.8vw,30px);line-height:1;font-family:inherit;padding:22px 56px;cursor:pointer;background:var(--grad);color:#fff;
+  box-shadow:0 10px 30px #7c3aed55;transition:transform .12s}
+.btn:active{transform:scale(.96)}
+.btn.ghost{background:#fff;color:var(--ink);box-shadow:0 6px 20px #0002}
+.btn.small{font-size:clamp(18px,2.2vw,24px);padding:16px 36px}
+.pulse{animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 10px 30px #7c3aed55,0 0 0 0 #ff2a9388}50%{box-shadow:0 10px 30px #7c3aed55,0 0 0 24px #ff2a9300}}
+/* startscherm */
+#idle{justify-content:flex-end;padding-bottom:calc(64px + env(safe-area-inset-bottom));
+  background:radial-gradient(circle at 6% 96%,#1eb4ffcc 0,#1eb4ff00 24%),radial-gradient(circle at 96% 90%,#ffa41ccc 0,#ffa41c00 26%),radial-gradient(circle at 50% 104%,#ff2a93cc 0,#ff2a9300 34%),linear-gradient(#0000 45%,#1c1b2299)}
+#welcome{font-size:clamp(30px,6.4vw,68px);font-weight:900;margin:0 0 24px;text-shadow:0 3px 22px #000b;line-height:1.05}
+/* aftellen */
+#count{background:#0002}
+#num{font-size:min(44vh,44vw);font-weight:900;line-height:1;animation:pop .9s ease-out;background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 6px 26px #0008) drop-shadow(0 0 3px #fff)}
+@keyframes pop{0%{transform:scale(1.6);opacity:0}25%{opacity:1}100%{transform:scale(.9);opacity:.9}}
+#shotinfo{font-size:clamp(20px,3.2vw,34px);font-weight:800;margin-bottom:10px;text-shadow:0 2px 14px #000b}
+#dots{display:flex;gap:12px;margin-top:22px}
+#dots i{width:16px;height:16px;border-radius:50%;background:#ffffff66}
+#dots i.on{background:var(--orange);box-shadow:0 0 0 4px #fff}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:20}
+#flash.go{animation:flash .5s ease-out}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+/* opname */
+#rec{justify-content:flex-start;align-items:center;pointer-events:none}
+#recbadge{margin-top:110px;display:flex;align-items:center;gap:12px;background:#fff;color:var(--ink);padding:12px 24px;border-radius:999px;font-weight:800;font-size:22px;box-shadow:0 6px 24px #0004}
+#recbadge b{width:16px;height:16px;border-radius:50%;background:#ff3b3b;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+#recbar{position:absolute;left:0;bottom:0;height:12px;background:linear-gradient(90deg,var(--pink),var(--orange),var(--blue));width:0}
+/* crème schermen met kleurspetters */
+#review,#upload,#done,#error{color:var(--ink);
+  background:radial-gradient(circle at 0% 0%,#1eb4ff55 0,#1eb4ff00 30%),radial-gradient(circle at 100% 8%,#ff2a9344 0,#ff2a9300 32%),radial-gradient(circle at 96% 100%,#ffa41c66 0,#ffa41c00 32%),radial-gradient(circle at 0% 100%,#7c3aed44 0,#7c3aed00 30%),var(--cream)}
+#app[data-screen=review] #top,#app[data-screen=done] #top,#app[data-screen=upload] #top,#app[data-screen=error] #top{background:none;color:var(--ink)}
+#app[data-screen=review] #evname,#app[data-screen=done] #evname,#app[data-screen=review] #evmeta,#app[data-screen=done] #evmeta{text-shadow:none}
+#app[data-screen=review] #logo,#app[data-screen=done] #logo{box-shadow:none}
+#review{gap:16px;padding-top:96px}
+/* naam invullen naast het voorbeeld */
+#review.ask{flex-direction:row;gap:clamp(20px,4vw,56px)}
+#review.ask #result{max-width:min(46vw,560px);max-height:calc(100% - 30px)}
+@media (orientation:portrait){#review.ask{flex-direction:column;gap:18px}#review.ask #result{max-height:40vh;max-width:84vw}}
+#namebox{display:none;flex-direction:column;gap:16px;width:min(440px,86vw);text-align:left}
+#review.ask #namebox{display:flex}
+#namebox h2{margin:0;font-size:clamp(30px,4.4vw,48px);font-weight:900;line-height:1.05;background:linear-gradient(90deg,var(--pink),var(--orange),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#namebox p{margin:0;font-size:clamp(16px,1.9vw,20px);font-weight:600;opacity:.75;line-height:1.35}
+#guestName{-webkit-user-select:text;user-select:text;font:inherit;font-size:clamp(22px,3vw,30px);font-weight:800;padding:18px 22px;border-radius:20px;border:3px solid #e8e3ef;background:#fff;color:var(--ink);outline:none;width:100%;box-shadow:0 8px 26px #7c3aed1f}
+#guestName:focus{border-color:var(--pink)}
+#namebox .row{justify-content:flex-start}
+#nameSaving{display:none;align-items:center;gap:10px;font-weight:700;opacity:.7}
+#nameSaving .spin{width:22px;height:22px;border-width:4px}
+#review.saving #nameSaving{display:flex}
+#result{max-width:min(92vw,900px);max-height:calc(100% - 100px);border-radius:14px;box-shadow:0 14px 50px #1c1b2240;object-fit:contain}
+.row{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+#upload,#error{gap:18px}
+.spin{width:64px;height:64px;border-radius:50%;border:7px solid #ff2a9333;border-top-color:var(--pink);border-right-color:var(--orange);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#done{gap:16px}
+#done h2{font-size:clamp(28px,5vw,54px);margin:0;font-weight:900;background:linear-gradient(90deg,var(--pink),var(--orange),var(--purple),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+#qrcard{background:#fff;padding:16px;border-radius:26px;box-shadow:0 14px 50px #7c3aed33;border:4px solid transparent;background-image:linear-gradient(#fff,#fff),linear-gradient(135deg,var(--pink),var(--orange),var(--blue));background-origin:border-box;background-clip:padding-box,border-box}
+#qrcard img{display:block;width:min(36vh,58vw);height:min(36vh,58vw)}
+#donehint{font-size:clamp(16px,2.1vw,24px);font-weight:700;max-width:520px}
+#donelink{font-size:14px;opacity:.6;word-break:break-all;max-width:90vw}
+#donebar{width:min(320px,70vw);height:8px;border-radius:4px;background:#1c1b2222;overflow:hidden}
+#donebar i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--orange),var(--blue));width:100%}
+#error p{max-width:520px;font-size:20px;line-height:1.4;font-weight:600}
+/* afstandsbediening */
+#rmt{position:absolute;right:18px;bottom:max(14px,env(safe-area-inset-bottom));z-index:6;display:none;align-items:center;gap:8px;background:#ffffffee;color:var(--ink);
+  border-radius:999px;padding:8px 14px;font-size:13px;font-weight:800;box-shadow:0 4px 16px #0003}
+#rmt.on{display:flex}
+#netq{position:absolute;left:18px;bottom:max(14px,env(safe-area-inset-bottom));z-index:6;display:none;align-items:center;gap:8px;background:#ffffffee;color:var(--ink);
+  border-radius:999px;padding:8px 14px;font-size:13px;font-weight:800;box-shadow:0 4px 16px #0003;max-width:calc(100vw - 260px)}
+#netq.on{display:flex}#netq b{width:9px;height:9px;border-radius:50%;background:var(--blue);flex:none}#netq.off b{background:var(--orange)}
+#donestate{font-size:15px;font-weight:700;max-width:520px;opacity:.85}#donestate[data-st=off]{color:#b45309}#donestate[data-st=ok]{color:#15803d}
+#rmt b{width:9px;height:9px;border-radius:50%;background:#22c55e}
+#tapaudio{position:absolute;left:50%;top:max(110px,calc(env(safe-area-inset-top) + 100px));transform:translateX(-50%);z-index:7;display:none;background:var(--ink);color:#fff;
+  border-radius:999px;padding:12px 22px;font-size:15px;font-weight:800;box-shadow:0 6px 24px #0005;white-space:nowrap}
+#tapaudio.on{display:block}
+</style>
+</head>
+<body>
+<div id="app" data-screen="boot">
+  <video id="cam" autoplay playsinline muted></video>
+
+  <div id="top">
+    <div id="brand"><img id="logo" src="/festiq-wordmark.jpg" alt="Festiq"><div><div id="evname"></div><div id="evmeta"></div><div id="caminfo" style="font-size:13px;opacity:.9;text-shadow:0 1px 8px #000"></div></div></div>
+    <div id="toolbtns">
+      <button class="iconbtn" id="btnRot" title="Beeld 180° draaien" aria-label="Beeld 180 graden draaien">180°</button>
+      <button class="iconbtn" id="btnFlip" title="Camera wisselen" aria-label="Camera wisselen">⟲</button>
+      <button class="iconbtn" id="btnFull" title="Volledig scherm" aria-label="Volledig scherm">⛶</button>
+    </div>
+  </div>
+
+  <div class="layer" id="idle">
+    <h1 id="welcome"></h1>
+    <button class="btn pulse" id="btnStart">Start</button>
+  </div>
+  
+
+  <div class="layer" id="count">
+    <div id="shotinfo"></div>
+    <div id="num"></div>
+    <div id="dots"></div>
+  </div>
+  <div class="layer" id="rec">
+    <div id="recbadge"><b></b><span id="rectime">REC</span></div>
+    <div id="recbar"></div>
+  </div>
+
+  <div class="layer" id="review">
+    <canvas id="result"></canvas>
+    <form id="namebox" autocomplete="off" onsubmit="return false">
+      <h2>Hoe heet je?</h2>
+      <p>Vul je naam in, dan bewaren we je fotostrip onder jouw naam.</p>
+      <input id="guestName" maxlength="60" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="done" placeholder="Je naam">
+      <div class="row"><button type="button" class="btn small" id="btnName">Opslaan ✓</button><button type="button" class="btn ghost small" id="btnSkip">Overslaan</button></div>
+      <div id="nameSaving"><div class="spin"></div><span>Je fotostrip wordt opgeslagen…</span></div>
+    </form>
+  </div>
+
+  <div class="layer" id="upload"><div class="spin"></div><div style="font-size:24px;font-weight:800" id="uptext">Even geduld, we maken je fotostrip klaar…</div></div>
+
+  <div class="layer" id="done">
+    <h2 id="doneTitle">Klaar! 🎉</h2>
+    <div id="qrcard"><img id="qr" alt="QR-code"></div>
+    <div id="donehint">Scan de QR-code met je telefoon om je foto te downloaden</div>
+    <div id="donestate"></div>
+    <div id="donelink"></div>
+    <button class="btn small" id="btnAgain">Nog een keer</button>
+    <div id="donebar"><i></i></div>
+  </div>
+
+  <div class="layer" id="error">
+    <div style="font-size:54px">⚠️</div>
+    <p id="errmsg"></p>
+    <div class="row"><button class="btn small" id="btnErrAction">Opnieuw proberen</button><button class="btn ghost small" id="btnErrBack" style="display:none">Terug</button></div>
+  </div>
+  <div id="flash"></div>
+  <div id="rmt"><b></b><span>Bediend vanaf Mac</span></div>
+  <div id="netq"><b></b><span></span></div>
+  <div id="tapaudio">🔊 Tik één keer op het scherm om het geluid aan te zetten</div>
+</div>
+
+<script src="/render.js"></script>
+<script src="/qrcode.min.js"></script>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const app = $('app'), cam = $('cam');
+const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop());
+const params = new URLSearchParams(location.search);
+if (params.has('kiosk')) document.body.classList.add('kiosk');
+
+const { CTX_FILTER, drawFiltered, lum } = PB;
+
+let ev = null, stream = null, facing = /^(back|achter|environment)$/.test(params.get('facing') || '') ? 'environment' : 'user', mirror = true, filter = 'none';
+let raws = [], resultBlob = null, resultKind = 'photo';
+let idleTimer = null, doneTimer = null, cancelFlow = false, audioCtx = null, wakeLock = null;
+let musicBuf = null, frameObj = null;
+/* Beeld 180° draaien (voor een camera die ondersteboven hangt); wordt per apparaat onthouden */
+let rot180 = false;
+try { rot180 = localStorage.getItem('pbRot180') === '1'; } catch {}
+let rotCv = null;
+function camSrc() {
+  if (!rot180) return cam;
+  const w = cam.videoWidth, h = cam.videoHeight;
+  if (!rotCv) rotCv = document.createElement('canvas');
+  if (rotCv.width !== w || rotCv.height !== h) { rotCv.width = w; rotCv.height = h; }
+  const x = rotCv.getContext('2d');
+  x.save(); x.translate(w, h); x.rotate(Math.PI); x.drawImage(cam, 0, 0, w, h); x.restore();
+  return rotCv;
+}
+function applyRot() { cam.classList.toggle('rot', rot180); $('btnRot').classList.toggle('on', rot180); report({ rot: rot180 }); }
+const getCtx = () => (audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)());
+
+const GRADS = ['linear-gradient(135deg,#ff2a93,#ffa41c)', 'linear-gradient(135deg,#ffa41c,#ff2a93)', 'linear-gradient(135deg,#7c3aed,#1eb4ff)', 'linear-gradient(135deg,#1eb4ff,#7c3aed)'];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+function setScreen(s) { app.dataset.screen = s; app.classList.remove('refilter'); report({ screen: s, ...(s === 'count' ? {} : { num: null }), ...(s === 'idle' ? { share: null, err: null } : {}), ...(s === 'review' ? {} : { preview: null, askName: false, typed: '' }) }); }
+
+function drawBar(ctx, y, w, h) {
+  ctx.fillStyle = ev.brand_color; ctx.fillRect(0, y, w, h);
+  ctx.fillStyle = lum(ev.brand_color) > .62 ? '#111' : '#fff';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const text = ev.name + (ev.footer_text ? '  •  ' + ev.footer_text : '');
+  let size = h * .42; ctx.font = `700 ${size}px -apple-system,system-ui,sans-serif`;
+  while (ctx.measureText(text).width > w * .92 && size > 10) { size -= 2; ctx.font = `700 ${size}px -apple-system,system-ui,sans-serif`; }
+  ctx.fillText(text, w / 2, y + h / 2 + 1);
+}
+
+/* ---------- resultaat tekenen (ontwerp + filter) ---------- */
+const curTpl = () => ev.templates[0];
+function renderResult() {
+  const c = $('result');
+  const src = PB.renderStrip(raws, curTpl(), { name: ev.name, footer: ev.footer_text, brand: ev.brand_color }, filter);
+  c.width = src.width; c.height = src.height;
+  c.getContext('2d').drawImage(src, 0, 0);
+}
+
+/* ---------- camera ---------- */
+/* Welke camera: bewaarde keuze > ?cam=naam in de link > automatisch een capturekaart/HDMI-stick > standaardcamera */
+let camId = null, camLabel = '';
+try { camId = localStorage.getItem('pbCamId') || null; camLabel = localStorage.getItem('pbCamLabel') || ''; } catch {}
+const CAPTURE_RE = /capture|hdmi|elgato|cam ?link|usb ?3|grabber|magewell|blackmagic/i;
+const BUILTIN_RE = /facetime|built-?in|ingebouwd|isight|continuity|iphone|ipad/i;
+const listCams = async () => (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+async function startCamera() {
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('nosupport');
+  // Handmatig kiezen kan via de link: ?res=1280x720&fps=30 (en ?info toont wat de camera werkelijk levert)
+  const m = /^(\d+)x(\d+)$/.exec(params.get('res') || ''), wantFps = +params.get('fps') || 0;
+  const size = { width: { ideal: m ? +m[1] : 1920 }, height: { ideal: m ? +m[2] : 1080 } };
+  const get = (extra) => navigator.mediaDevices.getUserMedia({ video: { ...size, ...(camId ? { deviceId: { exact: camId } } : { facingMode: { ideal: facing } }), ...extra }, audio: false });
+  const open = async () => {
+    const vid = ev && ev.mode === 'video';
+    stream = await get(vid || wantFps ? { frameRate: { ideal: wantFps || 60 } } : {});
+    // 60 beeld/s is fijn voor slow-motion, maar sommige camera's zakken dan terug in resolutie: dan kiezen we liever Full HD
+    if (vid && !m && !wantFps && stream.getVideoTracks()[0].getSettings().width < 1900) {
+      try {
+        const alt = await get({});
+        if (alt.getVideoTracks()[0].getSettings().width > stream.getVideoTracks()[0].getSettings().width) { stream.getTracks().forEach((t) => t.stop()); stream = alt; }
+        else alt.getTracks().forEach((t) => t.stop());
+      } catch {}
+    }
+  };
+  try { await open(); } catch (e) { if (camId) { camId = null; await open(); } else throw e; }
+  if (!camId) { // pas na toestemming zijn de cameranamen bekend: kies zo nodig de capturekaart
+    try {
+      const want = (params.get('cam') || camLabel).toLowerCase(), cams = await listCams(), cur = stream.getVideoTracks()[0].getSettings().deviceId;
+      const pick = (want && cams.find((c) => c.label.toLowerCase().includes(want))) || (params.get('cam') ? null : cams.find((c) => CAPTURE_RE.test(c.label) && !BUILTIN_RE.test(c.label)));
+      if (pick && pick.deviceId !== cur) { camId = pick.deviceId; stream.getTracks().forEach((t) => t.stop()); try { await open(); } catch { camId = null; await open(); } }
+    } catch {}
+  }
+  cam.srcObject = stream;
+  await cam.play();
+  const s = stream.getVideoTracks()[0].getSettings();
+  mirror = s.facingMode ? s.facingMode === 'user' : facing === 'user';
+  cam.classList.toggle('mirror', mirror);
+  const tr = stream.getVideoTracks()[0];
+  report({ mirror, cam: tr.label, res: `${s.width}x${s.height}`, fps: Math.round(s.frameRate || 0) });
+  RM.trackChanged(tr);
+  if (params.has('info')) { const t = stream.getVideoTracks()[0]; $('caminfo').textContent = `${t.label} · ${s.width}x${s.height} · ${Math.round(s.frameRate || 0)} fps`; }
+}
+function grabFrame() {
+  const scale = Math.min(1, 1920 / cam.videoWidth);
+  const w = Math.round(cam.videoWidth * scale), h = Math.round(cam.videoHeight * scale);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  if (mirror) { x.translate(w, 0); x.scale(-1, 1); }
+  x.drawImage(camSrc(), 0, 0, w, h);
+  return c;
+}
+
+/* ---------- audio + flash ---------- */
+function beep(freq, dur) {
+  try {
+    getCtx();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = freq; o.type = 'sine'; g.gain.value = .15;
+    o.connect(g); g.connect(audioCtx.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + dur); o.stop(audioCtx.currentTime + dur);
+  } catch {}
+}
+function flash() { const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); beep(1100, .25); report({ flash: Date.now() }); }
+
+/* ---------- flow ---------- */
+async function countdown(n, info, dotsTotal, dotsDone) {
+  setScreen('count');
+  $('shotinfo').textContent = info || '';
+  $('dots').innerHTML = dotsTotal ? Array.from({ length: dotsTotal }, (_, i) => `<i class="${i === dotsDone ? 'on' : ''}"></i>`).join('') : '';
+  for (let i = n; i >= 1; i--) {
+    if (cancelFlow) return false;
+    const el = $('num'); el.textContent = i; el.style.backgroundImage = GRADS[i % GRADS.length]; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    report({ num: i, info: info || '' });
+    beep(i === 1 ? 880 : 660, .12);
+    await sleep(1000);
+  }
+  return !cancelFlow;
+}
+
+async function startSession() {
+  cancelFlow = false; raws = []; resultBlob = null; guestName = ''; clearTimeout(idleTimer);
+  try { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); else beep(1, .01); } catch {}
+  if (ev.mode === 'video') return recordVideo();
+  const shots = ev.strip_shots || 3; // de iPad-booth maakt altijd een fotostrip
+  for (let i = 0; i < shots; i++) {
+    const ok = await countdown(ev.countdown, shots > 1 ? `Foto ${i + 1} van ${shots}` : 'Kijk in de camera!', shots > 1 ? shots : 0, i);
+    if (!ok) return;
+    flash(); raws.push(grabFrame());
+    if (i < shots - 1) { $('num').textContent = ''; await sleep(700); }
+  }
+  renderResult();
+  // voorbeeld van de fotostrip tonen (intussen wordt hij al opgeslagen); zo nodig vragen we de naam, daarna de QR-code
+  const ask = !!ev.ask_name;
+  $('review').classList.toggle('ask', ask);
+  setScreen('review');
+  try { const c = $('result'), sc = Math.min(1, 480 / c.height), t = document.createElement('canvas');
+    t.width = Math.round(c.width * sc); t.height = Math.round(c.height * sc); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height);
+    report({ preview: t.toDataURL('image/jpeg', 0.7), askName: ask, typed: '' }); } catch {}
+  save({ preview: ask ? askName() : sleep(PREVIEW_MS) });
+}
+const PREVIEW_MS = 4000; // hoe lang het voorbeeld in beeld blijft (als er geen naam gevraagd wordt)
+const NAME_TIMEOUT_MS = 60000; // zonder invoer gaat de booth na zoveel tijd vanzelf door naar de QR-code
+
+/* ---------- naam van de gast ---------- */
+let guestName = '', nameResolve = null, nameTimer = null;
+function askName() {
+  return new Promise((res) => {
+    guestName = ''; $('guestName').value = ''; nameResolve = res;
+    $('review').classList.remove('saving');
+    const reset = () => { clearTimeout(nameTimer); nameTimer = setTimeout(() => finishName(true), NAME_TIMEOUT_MS); };
+    reset();
+    $('guestName').oninput = () => { reset(); report({ typed: $('guestName').value }); };
+    setTimeout(() => { try { $('guestName').focus({ preventScroll: true }); } catch {} }, 250);
+  });
+}
+function finishName(skip) {
+  if (!nameResolve) return;
+  clearTimeout(nameTimer);
+  guestName = skip ? '' : $('guestName').value.replace(/\s+/g, ' ').trim().slice(0, 60);
+  try { $('guestName').blur(); } catch {}
+  const r = nameResolve; nameResolve = null; r();
+}
+$('btnName').onclick = () => finishName(!$('guestName').value.trim());
+$('btnSkip').onclick = () => finishName(true);
+$('guestName').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('btnName').onclick(); } });
+
+function pickMime(withAudio) {
+  const c = [
+    ...(withAudio ? ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'] : []),
+    'video/mp4;codecs=avc1.640028', 'video/mp4;codecs=avc1', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
+  return c.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+}
+/* Eén opname-pass: tekent frames op een canvas, neemt dat op (met optioneel muziek) tot stop() true geeft. */
+/* `drive` = het video-element waarvan de beelden binnenkomen (camera of afspeel-video): dan schrijven we precies één beeld per
+   binnengekomen beeld. Tekenen op de schermverversing (rAF) gaf dubbele en overgeslagen beelden, en dus een haperende video. */
+async function recordPass({ w, h, draw, stop, maxSecs, music, monitor, noRecord, musicSecs, bitrate, tick, drive }) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  Object.assign(cv.style, { position: 'fixed', width: '2px', height: '2px', opacity: '0.01', pointerEvents: 'none', left: 0, top: 0 });
+  document.body.appendChild(cv);
+  const x = cv.getContext('2d');
+  const byFrame = !!(drive && drive.requestVideoFrameCallback);
+  const vstream = byFrame ? cv.captureStream() : cv.captureStream(60);
+  try { vstream.getVideoTracks()[0].contentHint = 'detail'; } catch {}
+  let m = null;
+  if (music && musicBuf) {
+    try {
+      const ac = getCtx(); if (ac.state === 'suspended') await Promise.race([ac.resume(), sleep(600)]);
+      const dest = ac.createMediaStreamDestination(), src = ac.createBufferSource(), g = ac.createGain();
+      src.buffer = musicBuf; src.loop = true; g.gain.value = 1;
+      src.connect(g); if (monitor) g.connect(ac.destination);
+      if (!noRecord) { g.connect(dest); dest.stream.getAudioTracks().forEach((t) => vstream.addTrack(t)); }
+      m = { src, g, ac, rec: !noRecord };
+    } catch { m = null; }
+  }
+  const mime = pickMime(!!(m && m.rec));
+  const chunks = [];
+  const rec = new MediaRecorder(vstream, { ...(mime ? { mimeType: mime } : {}), videoBitsPerSecond: bitrate || 6e6 });
+  rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data);
+  const t0 = performance.now();
+  let finish; const finished = new Promise((r) => { finish = r; });
+  let running = true, watch = null;
+  function check(el) { if (cancelFlow || stop(el) || el > maxSecs) { running = false; finish(el); return true; } return false; }
+  function loop() {
+    if (!running) return;
+    const el = (performance.now() - t0) / 1000;
+    try { draw(x, el); } catch {}
+    if (tick) tick(el);
+    if (check(el)) return;
+    requestAnimationFrame(loop);
+  }
+  function frameLoop() {
+    if (!running) return;
+    const el = (performance.now() - t0) / 1000;
+    try { draw(x, el); } catch {}
+    if (tick) tick(el);
+    if (check(el)) return;
+    drive.requestVideoFrameCallback(frameLoop);
+  }
+  rec.start(250);
+  if (byFrame) {
+    // vangnet: stopt ook als er even geen nieuwe beelden komen (bijv. einde van de afspeel-video)
+    watch = setInterval(() => { if (running) check((performance.now() - t0) / 1000); }, 100);
+    frameLoop();
+  } else loop();
+  if (m) {
+    const t = m.ac.currentTime; m.src.start();
+    const d = musicSecs || maxSecs;
+    m.g.gain.setValueAtTime(1, t + Math.max(0, d - 1.5)); m.g.gain.linearRampToValueAtTime(0, t + d);
+  }
+  const elapsed = await finished;
+  if (watch) clearInterval(watch);
+  if (m) { try { m.src.stop(); m.src.disconnect(); m.g.disconnect(); } catch {} }
+  const done = new Promise((r) => { rec.onstop = r; });
+  rec.stop(); await done; cv.remove();
+  const type = (rec.mimeType || mime || 'video/webm').split(';')[0];
+  return { blob: new Blob(chunks, { type }), elapsed, hasAudio: !!(m && m.rec) };
+}
+
+/* Slow-motion: kies het venster met de meeste beweging */
+const SLOW_RATE = 0.5;
+function findMotionWindow(motion, secs) {
+  const win = Math.min(3, Math.max(1.5, secs * 0.3));
+  if (secs < win + 1.5 || motion.length < 10) return null;
+  const at = (t) => { let s = 0; for (const p of motion) if (p.t >= t && p.t < t + win) s += p.m; return s; };
+  let best = null, bestS = -1;
+  for (let a = 0.6; a + win <= secs - 0.6; a += 0.1) { const s = at(a); if (s > bestS) { bestS = s; best = a; } }
+  return best == null ? null : { a: best, b: best + win };
+}
+function slowRate(t, wnd) {
+  if (!wnd || t < wnd.a || t > wnd.b) return 1;
+  const r = 0.3, s = Math.max(0, Math.min(1, (t - wnd.a) / r, (wnd.b - t) / r)), e = s * s * (3 - 2 * s);
+  return 1 - (1 - SLOW_RATE) * e;
+}
+function outputDuration(src, wnd) { let d = 0; for (let t = 0; t < src; t += 0.01) d += 0.01 / slowRate(t, wnd); return d; }
+
+async function recordVideo() {
+  if (!window.MediaRecorder) return showError('Video-opname wordt niet ondersteund in deze browser.', false);
+  const ok = await countdown(ev.countdown, 'Maak je klaar!', 0, 0);
+  if (!ok) return;
+  const scale = Math.min(1, 1920 / cam.videoWidth);
+  const w = Math.round(cam.videoWidth * scale), h = Math.round(cam.videoHeight * scale), bar = frameObj ? 0 : Math.round(w * 0.065);
+  const H = h, secs = ev.video_seconds; // de naambalk komt over de onderrand, zodat de video precies de camera-resolutie houdt (Full HD)
+  const overlay = (x) => { if (frameObj) PB.drawVideoFrame(x, w, H, frameObj, { name: ev.name, footer: ev.footer_text }); else drawBar(x, h - bar, w, bar); };
+  const tick = (el) => {
+    $('recbar').style.width = Math.min(100, el / secs * 100) + '%';
+    const left = Math.max(0, Math.ceil(secs - el));
+    $('rectime').textContent = 'REC  ' + left + 's';
+    if (left !== RM.lastLeft) { RM.lastLeft = left; report({ recLeft: left, recTotal: secs }); }
+  };
+  setScreen('rec'); beep(1200, .2);
+  let out;
+  if (!ev.slowmo) {
+    out = await recordPass({ w, h: H, maxSecs: secs, musicSecs: secs, music: true, bitrate: 16e6, tick, drive: cam,
+      draw: (x) => { drawFiltered(x, camSrc(), null, 0, 0, w, h, filter, mirror); overlay(x); }, stop: (el) => el >= secs });
+  } else {
+    // Pass 1: ruwe opname + bewegingsmeting
+    const mc = document.createElement('canvas'); mc.width = 48; mc.height = 27;
+    const mx = mc.getContext('2d', { willReadFrequently: true });
+    let prev = null; const motion = [];
+    const p1 = await recordPass({ w, h, maxSecs: secs, bitrate: 24e6, tick, drive: cam, stop: (el) => el >= secs,
+      draw: (x, el) => {
+        drawFiltered(x, camSrc(), null, 0, 0, w, h, filter, mirror);
+        mx.drawImage(cam, 0, 0, 48, 27);
+        const d = mx.getImageData(0, 0, 48, 27).data; let s = 0;
+        if (prev) for (let i = 0; i < d.length; i += 4) s += Math.abs(d[i] - prev[i]) + Math.abs(d[i + 1] - prev[i + 1]) + Math.abs(d[i + 2] - prev[i + 2]);
+        prev = d.slice(); if (s) motion.push({ t: el, m: s });
+      } });
+    if (cancelFlow) return;
+    const srcSecs = p1.elapsed, wnd = findMotionWindow(motion, srcSecs);
+    // Pass 2: afspelen met slow-motion + kader + muziek
+    $('uptext').textContent = wnd ? 'Slow-motion wordt toegevoegd…' : 'Even geduld, je video wordt klaargemaakt…';
+    setScreen('upload');
+    const url1 = URL.createObjectURL(p1.blob);
+    const v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.src = url1;
+    Object.assign(v.style, { position: 'fixed', width: '2px', height: '2px', opacity: '0.01', pointerEvents: 'none', left: 0, top: 0 });
+    document.body.appendChild(v);
+    await new Promise((r) => { v.onloadeddata = r; v.onerror = r; setTimeout(r, 4000); });
+    const total = wnd ? outputDuration(srcSecs, wnd) : srcSecs;
+    v.play().catch(() => {});
+    out = await recordPass({ w, h: H, maxSecs: total + 8, musicSecs: total, music: true, bitrate: 16e6, drive: v,
+      tick: (el) => { $('uptext').dataset.p = Math.min(99, Math.round(el / total * 100)); },
+      draw: (x) => {
+        v.playbackRate = Math.max(0.25, slowRate(v.currentTime, wnd));
+        x.drawImage(v, 0, 0, w, h); overlay(x);
+      },
+      stop: () => v.ended });
+    v.pause(); v.remove(); URL.revokeObjectURL(url1);
+    if (cancelFlow) return;
+  }
+  resultBlob = out.blob; resultKind = 'video';
+  save();
+}
+
+/* Opslaan werkt ook zonder internet: de foto/video gaat eerst in een wachtrij op dit apparaat (IndexedDB) en wordt
+   op de achtergrond geüpload, ook later als het internet weer terug is. Het ID maken we hier zelf, zodat de
+   QR-code meteen klopt. Scant een gast hem voordat de upload binnen is, dan wacht zijn downloadpagina vanzelf. */
+async function save(opts) {
+  clearTimeout(idleTimer);
+  const preview = opts && opts.preview; // tijdens het voorbeeld / naam invullen niet naar het wachtscherm
+  if (!preview) { $('uptext').textContent = ev.mode === 'video' ? 'Even geduld, we slaan je video op…' : 'Even geduld, we maken je fotostrip klaar…'; setScreen('upload'); }
+  try {
+    const kind = ev.mode === 'video' ? 'video' : 'strip';
+    const blob = kind === 'video' ? resultBlob : await new Promise((res) => $('result').toBlob(res, 'image/jpeg', 0.92));
+    if (!blob) throw new Error('Kon de foto niet maken');
+    const taken = Date.now();
+    if (preview) { await preview; if (cancelFlow) return; } // wacht op het voorbeeld en de naam
+    const id = newMediaId();
+    await UP.add({ id, slug, kind, filter, blob, type: blob.type, guest_name: guestName || '', taken });
+    showDone({ id, share: publicBase() + '/p/' + id });
+  } catch (e) {
+    showError('Opslaan is niet gelukt: ' + (e.message || 'onbekende fout') + '.', true);
+  }
+}
+const newMediaId = () => [...crypto.getRandomValues(new Uint8Array(6))].map((b) => b.toString(16).padStart(2, '0')).join('');
+const publicBase = () => ((ev && ev.public_url) || location.origin).replace(/\/$/, '');
+
+/* ---------- upload-wachtrij (offline-proof) ---------- */
+const UP = (() => {
+  let dbp = null, mem = new Map(), busy = false, online = navigator.onLine !== false, count = 0;
+  const reqP = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  function db() {
+    if (!dbp) dbp = new Promise((res, rej) => {
+      const r = indexedDB.open('photobooth', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('queue', { keyPath: 'id' });
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    }).catch((e) => { console.warn('IndexedDB niet beschikbaar, wachtrij alleen in geheugen', e); return null; });
+    return dbp;
+  }
+  async function st(mode) { const d = await db(); return d ? d.transaction('queue', mode).objectStore('queue') : null; }
+  async function put(it) { const s = await st('readwrite'); if (s) { try { await reqP(s.put(it)); return; } catch (e) { console.warn(e); } } mem.set(it.id, it); }
+  async function del(id) { mem.delete(id); const s = await st('readwrite'); if (s) try { await reqP(s.delete(id)); } catch {} }
+  async function all() { const s = await st('readonly'); let list = []; if (s) try { list = await reqP(s.getAll()); } catch {} return [...list, ...mem.values()].sort((a, b) => a.taken - b.taken); }
+  async function upload(it) {
+    const fd = new FormData();
+    fd.append('id', it.id); fd.append('kind', it.kind); fd.append('filter', it.filter || 'none');
+    fd.append('guest_name', it.guest_name || ''); fd.append('taken_at', new Date(it.taken).toISOString());
+    if (Date.now() - it.taken > 60000) fd.append('offline', '1');
+    fd.append('file', it.blob instanceof Blob ? it.blob : new Blob([it.blob], { type: it.type }), 'media');
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 60000 + (it.blob.size || 0) / 100); // ruim: 60 s + ~0,1 s per 10 kB
+    try {
+      const r = await fetch(`/api/public/events/${encodeURIComponent(it.slug)}/upload`, { method: 'POST', body: fd, signal: ctl.signal });
+      if (r.ok) return 'ok';
+      return r.status >= 500 || r.status === 408 || r.status === 429 ? 'retry' : 'fatal';
+    } catch { return 'net'; } finally { clearTimeout(t); }
+  }
+  async function pump() {
+    if (busy) return; busy = true;
+    try {
+      for (;;) {
+        const list = await all(); count = list.length; paint();
+        const it = list.find((i) => !i.nextTry || i.nextTry <= Date.now());
+        if (!it) break;
+        const res = await upload(it);
+        if (res === 'ok') { await del(it.id); online = true; continue; }
+        it.tries = (it.tries || 0) + 1;
+        it.nextTry = Date.now() + (res === 'fatal' ? 5 * 60000 : Math.min(30000, 2000 * 2 ** Math.min(it.tries, 4)));
+        await put(it);
+        if (res === 'net') { online = false; break; } // geen internet: de rest hoeft het nu ook niet te proberen
+      }
+    } finally { busy = false; paint(); }
+  }
+  function paint() {
+    const el = $('netq'); if (!el) return;
+    el.classList.toggle('on', count > 0 || !online);
+    el.classList.toggle('off', !online);
+    el.querySelector('span').textContent = !online
+      ? (count ? `Geen internet · ${count} ${count === 1 ? 'opname wacht' : 'opnames wachten'} op upload` : 'Geen internet · booth werkt gewoon door')
+      : `${count} ${count === 1 ? 'opname' : 'opnames'} uploaden…`;
+    report({ queue: count, online });
+    // klaar-scherm: laat zien of de huidige foto al online staat
+    const cur = $('done').dataset.id;
+    if (cur && app.dataset.screen === 'done') all().then((l) => setDoneState(l.some((i) => i.id === cur) ? (online ? 'up' : 'off') : 'ok'));
+  }
+  async function add(it) { await put(it); count++; paint(); pump(); }
+  window.addEventListener('online', async () => { online = true; for (const it of await all()) { it.nextTry = 0; await put(it); } pump(); });
+  window.addEventListener('offline', () => { online = false; paint(); });
+  setInterval(pump, 5000);
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+  return { add, pump, all, isOnline: () => online };
+})();
+function setDoneState(st) {
+  const el = $('donestate'); el.dataset.st = st;
+  el.textContent = st === 'ok' ? '✓ Staat klaar om te downloaden'
+    : st === 'off' ? `📴 Even geen internet. Je ${ev && ev.mode === 'video' ? 'video' : 'fotostrip'} wordt geüpload zodra er weer verbinding is; de QR-code werkt dan vanzelf.`
+    : '⏳ Wordt geüpload… je kunt de QR-code al scannen.';
+}
+
+function showDone(j) {
+  $('doneTitle').textContent = ev.mode === 'video' ? 'Je video is klaar! 🎬' : (guestName ? `Bedankt, ${guestName}! 🎉` : 'Je fotostrip is klaar! 🎉');
+  $('donehint').textContent = 'Scan de QR-code met je telefoon om te downloaden';
+  const link = j.share || (location.origin + j.url);
+  $('done').dataset.id = j.id || '';
+  makeQr(link).then((src) => { $('qr').src = src; });
+  $('donelink').textContent = link;
+  UP.all().then((l) => setDoneState(l.some((i) => i.id === j.id) ? (UP.isOnline() ? 'up' : 'off') : 'ok'));
+  report({ share: link, kind: ev.mode === 'video' ? 'video' : 'strip', file: j.file || null });
+  setScreen('done');
+  const bar = $('donebar').firstElementChild;
+  bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth;
+  bar.style.transition = 'width 30s linear'; bar.style.width = '0%';
+  clearTimeout(doneTimer); doneTimer = setTimeout(goIdle, 30000);
+}
+
+/* QR-code in de browser maken (werkt ook offline); valt terug op de server */
+async function makeQr(text) {
+  try { if (window.QRCode) { const svg = await QRCode.toString(text, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#5b21b6', light: '#ffffff' } }); return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); } } catch (e) { console.warn(e); }
+  return `/api/qr?text=${encodeURIComponent(text)}&fg=%235b21b6`;
+}
+
+function showError(msg, canRetrySave) {
+  $('errmsg').textContent = msg;
+  report({ err: msg });
+  const a = $('btnErrAction'), b = $('btnErrBack');
+  if (canRetrySave) { a.textContent = 'Opnieuw proberen'; a.onclick = () => save(); b.style.display = ''; b.onclick = goIdle; }
+  else { a.textContent = 'Terug'; a.onclick = goIdle; b.style.display = 'none'; }
+  setScreen('error');
+}
+
+function goIdle() {
+  cancelFlow = true; clearTimeout(idleTimer); clearTimeout(doneTimer);
+  if (nameResolve) { clearTimeout(nameTimer); const r = nameResolve; nameResolve = null; r(); }
+  raws = []; resultBlob = null;
+  setScreen('idle');
+}
+/* ---------- boot ---------- */
+async function boot() {
+  const evUrl = `/api/public/events/${encodeURIComponent(slug)}`;
+  try {
+    let r = null;
+    try {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 6000);
+      r = await fetch(evUrl, { cache: 'no-store', signal: ctl.signal }); clearTimeout(t);
+    } catch { r = null; }
+    if (r && r.status === 404) throw new Error('Dit evenement bestaat niet. Controleer de link.');
+    if (r && r.ok) {
+      ev = await r.json();
+      try { (await caches.open(CACHE)).put(evUrl, new Response(JSON.stringify(ev), { headers: { 'Content-Type': 'application/json' } })); } catch {}
+    } else { // geen internet: laatst bekende instellingen gebruiken
+      const c = await caches.match(evUrl).catch(() => null);
+      if (!c) throw new Error('Geen internet, en dit evenement is op dit apparaat nog niet eerder geopend. Open de booth één keer met internet.');
+      ev = await c.json();
+    }
+  } catch (e) { return showError(e.message || 'Kon het evenement niet laden.', false), $('btnErrAction').style.display = 'none'; }
+  document.title = ev.name + ' – Photobooth';
+  document.documentElement.style.setProperty('--brand', ev.brand_color);
+    $('evname').textContent = ev.name;
+  $('evmeta').textContent = [ev.date && new Date(ev.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }), ev.location].filter(Boolean).join(' · ');
+  $('welcome').textContent = ev.welcome_text;
+  $('btnStart').textContent = ev.mode === 'video' ? '🎬 Start 360° video' : '📸 Start fotostrip';
+  if (!ev.templates.length) ev.templates = [{ id: 'x', name: 'Standaard', frame_color: 'brand', bg_color: '#f1f1f7', bg_color2: '#e2e0f0', style: 'plain', aspect: '4:3', photo_radius: 0, frame_radius: 0, tilt: 0, caption: '', show_footer: true, text_color: 'auto', filter: 'none', stickers: [] }];
+  PB.preload(ev.templates);
+  if (ev.mode === 'video') loadVideoExtras();
+  if (!ev.active) {
+    $('errmsg').textContent = 'Deze photobooth is momenteel niet actief.';
+    $('btnErrAction').style.display = 'none'; return setScreen('error');
+  }
+  try { await startCamera(); }
+  catch (e) {
+    const msg = e.message === 'nosupport' || !window.isSecureContext
+      ? 'Camera niet beschikbaar. Open deze pagina via HTTPS (of localhost) in een moderne browser.'
+      : (e.name === 'NotAllowedError' ? 'Geen toegang tot de camera. Sta cameratoegang toe in je browserinstellingen en probeer het opnieuw.' : 'Camera niet gevonden of niet beschikbaar (' + (e.name || 'fout') + ').');
+    $('errmsg').textContent = msg;
+    const a = $('btnErrAction'); a.textContent = 'Opnieuw proberen'; a.onclick = () => location.reload(); $('btnErrBack').style.display = 'none';
+    return setScreen('error');
+  }
+  goIdle();
+  requestWake();
+  UP.pump();
+  setTimeout(warmCache, 3000); setTimeout(warmCache, 20000);
+}
+async function loadVideoExtras() {
+  const f = ev.video_frame;
+  if (f) {
+    if (f.kind === 'image') { const img = await PB.loadFrameImage(f.url); frameObj = img ? { kind: 'image', img } : null; }
+    else frameObj = { kind: 'builtin', id: f.id };
+  }
+  if (ev.music && ev.music.url) {
+    try {
+      const r = await fetch(ev.music.url); const ab = await r.arrayBuffer();
+      musicBuf = await new Promise((res, rej) => getCtx().decodeAudioData(ab, res, rej));
+    } catch (e) { console.warn('Muziek laden mislukt', e); musicBuf = null; }
+  }
+}
+/* Alles wat de booth nodig heeft (pagina, ontwerpen, stickers, kaders, muziek) op dit apparaat bewaren,
+   zodat de booth ook na herladen zonder internet werkt. */
+const CACHE = 'pb-cache-v1';
+async function warmCache() {
+  if (!('caches' in window)) return;
+  try {
+    const c = await caches.open(CACHE);
+    const urls = new Set(['/booth.html', '/render.js', '/qrcode.min.js', '/festiq-wordmark.jpg', '/festiq-logo.jpg']);
+    performance.getEntriesByType('resource').forEach((e) => { try { const u = new URL(e.name); if (u.origin === location.origin && /^\/media\/(stickers|strips|frames|music)\//.test(u.pathname)) urls.add(u.pathname); } catch {} });
+    if (ev && ev.music && ev.music.url) urls.add(ev.music.url);
+    if (ev && ev.video_frame && ev.video_frame.url) urls.add(ev.video_frame.url);
+    for (const u of urls) { if (!(await c.match(u))) { try { const r = await fetch(u); if (r.ok) await c.put(u, r); } catch {} } }
+  } catch (e) { console.warn('cache', e); }
+}
+if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('service worker', e));
+
+async function requestWake() { try { wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') requestWake(); });
+
+$('btnStart').onclick = startSession;
+$('btnRot').onclick = () => { rot180 = !rot180; try { localStorage.setItem('pbRot180', rot180 ? '1' : '0'); } catch {} applyRot(); };
+applyRot();
+$('btnAgain').onclick = goIdle;
+$('btnFlip').onclick = async () => {
+  // wissel naar de volgende aangesloten camera (en onthoud die keuze)
+  try {
+    const cams = await listCams(); if (!cams.length) return;
+    const cur = stream && stream.getVideoTracks()[0].getSettings().deviceId;
+    const next = cams[(Math.max(0, cams.findIndex((c) => c.deviceId === cur)) + 1) % cams.length];
+    camId = next.deviceId; camLabel = next.label; try { localStorage.setItem('pbCamId', camId); localStorage.setItem('pbCamLabel', camLabel); } catch {}
+    await startCamera();
+  } catch { camId = null; camLabel = ''; try { localStorage.removeItem('pbCamId'); localStorage.removeItem('pbCamLabel'); } catch {} startCamera().catch(() => {}); }
+};
+$('btnFull').onclick = () => { const d = document; if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen || (() => {})).call(e); } };
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* ---------- afstandsbediening (bijv. telefoon als camera, bediend vanaf de MacBook via /remote/<slug>) ---------- */
+const RM = (() => {
+  const myId = 'b' + Math.random().toString(36).slice(2, 10);
+  const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }] };
+  let token = null, es = null, remotes = 0, framesUntil = 0, framesBusy = false;
+  const pcs = new Map(); // remote-id -> RTCPeerConnection
+  const status = { type: 'status', screen: 'boot' };
+  let pending = null;
+  async function post(msg) {
+    if (!token) return;
+    try { await fetch(`/api/remote/${encodeURIComponent(slug)}/to-remote`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Booth-Token': token }, body: JSON.stringify(msg) }); } catch {}
+  }
+  function report(part) {
+    Object.assign(status, part, { audio: !audioCtx || audioCtx.state === 'running', mode: ev && ev.mode, event: ev && ev.name, t: Date.now() });
+    if (!token || !remotes || pending) return;
+    pending = setTimeout(() => { pending = null; post(status); }, 30); // kleine bundeling
+  }
+  // long-polling: werkt ook door de Cloudflare-tunnel (die houdt event-streams op)
+  const handlers = {
+    welcome: (d) => { token = d.token; setRemotes(d.remotes); post(status); },
+    remotes: (d) => setRemotes(d.count),
+    msg: (d) => onMsg(d).catch((err) => console.warn(err)),
+  };
+  async function connect() {
+    for (;;) {
+      try {
+        const r = await fetch(`/api/remote/${encodeURIComponent(slug)}/poll?role=booth&id=${myId}`, { cache: 'no-store' });
+        if (r.status === 404) return; // evenement bestaat niet
+        if (!r.ok) throw new Error(r.status);
+        for (const m of await r.json()) { try { handlers[m.type] && handlers[m.type](m.data); } catch (err) { console.warn(err); } }
+      } catch { await sleep(1500); }
+    }
+  }
+  function setRemotes(n) {
+    remotes = n; $('rmt').classList.toggle('on', n > 0);
+    try { $('tapaudio').classList.toggle('on', n > 0 && getCtx().state !== 'running'); } catch {}
+    if (n > 0) report({});
+    if (!n) { pcs.forEach((pc) => pc.close()); pcs.clear(); }
+  }
+  async function onMsg(m) {
+    switch (m.type) {
+      case 'hello': return startPeer(m.from);
+      case 'answer': { const pc = pcs.get(m.from); if (pc) await pc.setRemoteDescription(m.sdp); return; }
+      case 'ice': { const pc = pcs.get(m.from); if (pc && m.candidate) try { await pc.addIceCandidate(m.candidate); } catch {} return; }
+      case 'want-frames': framesUntil = Date.now() + 6000; return frameLoop();
+      case 'start': {
+        const s = app.dataset.screen;
+        if (s === 'idle' || s === 'done') { clearTimeout(doneTimer); return startSession(); }
+        return;
+      }
+      case 'cancel': return goIdle();
+      case 'name': // naam ingevuld (of overgeslagen) op de Mac
+        if (!nameResolve) return;
+        if (!m.skip) $('guestName').value = String(m.name || '').slice(0, 60);
+        return finishName(!!m.skip || !$('guestName').value.trim());
+      case 'flip': return $('btnFlip').onclick();
+      case 'rot': return $('btnRot').onclick();
+      case 'reload': return location.reload();
+      case 'ping': return post({ ...status, to: m.from });
+    }
+  }
+  async function startPeer(rid) {
+    if (!rid || !stream) return;
+    const old = pcs.get(rid); if (old) old.close();
+    const pc = new RTCPeerConnection(ICE); pcs.set(rid, pc);
+    const tr = stream.getVideoTracks()[0];
+    const sender = pc.addTrack(tr, stream);
+    try { // voorbeeldbeeld hoeft niet in volle kwaliteit: scheelt rekenkracht op de telefoon
+      const p = sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}];
+      p.encodings[0].maxBitrate = 2_500_000; p.encodings[0].scaleResolutionDownBy = Math.max(1, (tr.getSettings().width || 1280) / 1280);
+      await sender.setParameters(p);
+    } catch {}
+    pc.onicecandidate = (e) => { if (e.candidate) post({ type: 'ice', to: rid, candidate: e.candidate }); };
+    pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState) && pcs.get(rid) === pc) pcs.delete(rid); };
+    const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+    post({ type: 'offer', to: rid, sdp: pc.localDescription });
+  }
+  function trackChanged(tr) {
+    if (!pcs.size && remotes) post({ type: 'ready' }); // camera is (opnieuw) gestart: Mac mag verbinding maken
+    pcs.forEach((pc) => pc.getSenders().forEach((s) => { if (s.track && s.track.kind === 'video') s.replaceTrack(tr).catch(() => {}); }));
+  }
+  // reserve: JPEG-beeldjes via de server als de directe verbinding niet lukt
+  const fc = document.createElement('canvas');
+  async function frameLoop() {
+    if (framesBusy) return; framesBusy = true;
+    try {
+      while (Date.now() < framesUntil && token) {
+        if (cam.videoWidth) {
+          const sc = Math.min(1, 640 / cam.videoWidth);
+          fc.width = Math.round(cam.videoWidth * sc); fc.height = Math.round(cam.videoHeight * sc);
+          fc.getContext('2d').drawImage(cam, 0, 0, fc.width, fc.height);
+          const blob = await new Promise((r) => fc.toBlob(r, 'image/jpeg', 0.6));
+          if (blob) await fetch(`/api/remote/${encodeURIComponent(slug)}/frame`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Booth-Token': token }, body: blob }).catch(() => {});
+        }
+        await sleep(app.dataset.screen === 'rec' || app.dataset.screen === 'upload' ? 250 : 70);
+      }
+    } finally { framesBusy = false; }
+  }
+  return { connect, report, trackChanged, lastLeft: null };
+})();
+function report(part) { try { RM.report(part); } catch {} } // RM bestaat pas na het laden van de pagina
+
+/* Geluid mag op telefoons pas na een tik op het scherm. Bij bediening op afstand dus één keer tikken. */
+function unlockAudio() {
+  try { const ac = getCtx(); if (ac.state !== 'running') ac.resume().then(() => { $('tapaudio').classList.remove('on'); report({}); }).catch(() => {}); else $('tapaudio').classList.remove('on'); } catch {}
+}
+document.addEventListener('pointerdown', unlockAudio, true);
+
+RM.connect();
+boot();
+</script>
+</body>
+</html>
