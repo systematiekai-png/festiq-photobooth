@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bediening – Photobooth</title>
+<link rel="icon" href="/festiq-logo.jpg">
+<style>
+:root{--pink:#ff2a93;--orange:#ffa41c;--purple:#7c3aed;--blue:#1eb4ff;--cream:#fcf8ef;--ink:#1c1b22;--muted:#7a7385;--grad:linear-gradient(135deg,var(--pink),var(--purple));
+  --font:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",-apple-system,system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--cream);color:var(--ink);font-family:var(--font)}
+header{display:flex;align-items:center;gap:14px;padding:14px 20px;flex-wrap:wrap}
+header img{height:44px;border-radius:12px}
+header h1{font-size:20px;margin:0}
+header .sub{color:var(--muted);font-size:14px}
+#conn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;background:#fff;padding:8px 14px;border-radius:999px;box-shadow:0 4px 14px #0001}
+#conn b{width:10px;height:10px;border-radius:50%;background:#d4d0dc}
+#conn.on b{background:#22c55e}#conn.wait b{background:var(--orange)}
+main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;padding:0 20px 20px;align-items:start}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+#stage{position:relative;background:#14131a;border-radius:20px;overflow:hidden;aspect-ratio:16/10;max-height:calc(100vh - 100px);width:100%;box-shadow:0 14px 40px #1c1b2233}
+#stage video,#stage img.live{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#stage .mirror{transform:scaleX(-1)}#stage .rot{transform:rotate(180deg)}#stage .rot.mirror{transform:rotate(180deg) scaleX(-1)}
+.ov{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff;pointer-events:none;padding:20px}
+.ov.on{display:flex}
+#ovWait{background:#14131a;pointer-events:auto;gap:14px}
+#ovWait h2{margin:0;font-size:26px}
+#ovWait p{margin:0;max-width:520px;line-height:1.45;opacity:.85}
+#ovWait img{width:170px;height:170px;background:#fff;border-radius:16px;padding:8px}
+#ovWait code{background:#ffffff1a;padding:6px 10px;border-radius:8px;font-size:13px;word-break:break-all}
+#ovCount{background:#0003}
+#ovCount .num{font-size:min(30vh,22vw);font-weight:900;line-height:1;text-shadow:0 6px 30px #000a}
+#ovCount .info{font-size:24px;font-weight:800;text-shadow:0 2px 12px #000a}
+#ovRec{justify-content:flex-start;padding-top:24px}
+#ovRec .badge{display:flex;align-items:center;gap:10px;background:#fff;color:var(--ink);padding:10px 20px;border-radius:999px;font-weight:800;font-size:20px}
+#ovRec .badge b{width:14px;height:14px;border-radius:50%;background:#ff3b3b;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+#recbar{position:absolute;left:0;bottom:0;height:8px;background:linear-gradient(90deg,var(--pink),var(--orange),var(--blue));width:0;transition:width 1s linear}
+#ovPrev{background:#14131aee;gap:12px;font-size:18px;font-weight:800;pointer-events:auto}
+#ovPrev .nm{display:none;gap:8px;margin-top:4px}#ovPrev.ask .nm{display:flex}
+#ovPrev .nm input{font:inherit;font-size:18px;font-weight:700;padding:10px 14px;border-radius:12px;border:0;width:min(320px,50vw)}
+#ovPrev .nm .btn{padding:10px 18px;font-size:15px}
+#ovPrev img{max-height:calc(100% - 120px);max-width:90%;border-radius:12px;box-shadow:0 10px 40px #0008}
+#ovBusy{background:#14131acc;gap:14px;font-size:20px;font-weight:800}
+.spin{width:54px;height:54px;border-radius:50%;border:6px solid #ff2a9333;border-top-color:var(--pink);border-right-color:var(--orange);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#ovDone{background:#14131add;gap:12px;pointer-events:auto}
+#ovDone h2{margin:0;font-size:28px}
+#ovDone img{width:200px;height:200px;background:#fff;border-radius:18px;padding:10px}
+#ovDone a{color:#fff;font-size:13px;opacity:.75;word-break:break-all}
+#ovErr{background:#14131add;gap:10px;font-size:18px;font-weight:700;pointer-events:auto}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.go{animation:fl .4s ease-out}@keyframes fl{0%{opacity:.85}100%{opacity:0}}
+#tag{position:absolute;left:12px;bottom:12px;background:#0009;color:#fff;font-size:12px;padding:5px 10px;border-radius:999px}
+aside{display:flex;flex-direction:column;gap:14px}
+.card{background:#fff;border-radius:20px;padding:18px;box-shadow:0 8px 28px #1c1b2212}
+.card h3{margin:0 0 10px;font-size:15px;color:var(--muted);font-weight:700}
+.btn{border:0;border-radius:999px;font-weight:800;font-family:inherit;cursor:pointer;padding:14px 22px;font-size:16px;background:var(--grad);color:#fff;box-shadow:0 8px 22px #7c3aed44}
+.btn:disabled{opacity:.4;cursor:default;box-shadow:none}
+.btn.big{width:100%;font-size:22px;padding:22px}
+.btn.sec{background:#f3eff8;color:var(--ink);box-shadow:none}
+.btn.warn{background:#ffe4ec;color:#b0124f;box-shadow:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.4}
+kbd{background:#f3eff8;border-radius:6px;padding:1px 6px;font-family:inherit;font-weight:700}
+#audioWarn{display:none;background:#fff4e0;color:#8a5200;border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700}
+#audioWarn.on{display:block}
+#alert{display:none;background:#ffe4ec;color:#9f1239;border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700;line-height:1.4}#alert.on{display:block}
+#ovWait{z-index:3}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:0;font-size:14px}dt{color:var(--muted)}dd{margin:0;word-break:break-word}
+/* login */
+#login{max-width:360px;margin:12vh auto;display:none;flex-direction:column;gap:12px;text-align:center}
+#login.on{display:flex}
+#login input{padding:14px 16px;border-radius:14px;border:2px solid #e8e3ef;font-size:16px;font-family:inherit}
+#loginErr{color:#b0124f;font-weight:700;min-height:1em}
+</style>
+</head>
+<body>
+<form id="login" class="card"><img src="/festiq-wordmark.jpg" alt="Festiq" style="width:200px;margin:0 auto"><h2 style="margin:0">Bediening</h2>
+  <div class="hint" style="margin:0">Log in met het dashboard-wachtwoord</div>
+  <input type="password" id="pw" placeholder="Wachtwoord" autocomplete="current-password" autofocus><button class="btn">Inloggen</button><div id="loginErr"></div></form>
+
+<div id="ui" style="display:none">
+<header><img src="/festiq-wordmark.jpg" alt="Festiq"><div><h1 id="evname">Bediening</h1><div class="sub" id="evsub">Telefoon als camera, bediend vanaf deze Mac</div></div>
+  <div id="conn"><b></b><span id="connText">Wachten op telefoon…</span></div></header>
+<main>
+  <div id="stage">
+    <video id="vid" autoplay playsinline muted></video>
+    <img id="jpg" class="live" alt="" style="display:none">
+    <div class="ov on" id="ovWait"><h2>Telefoon nog niet verbonden</h2>
+      <p>Open de photobooth op je Samsung (in Chrome) via dit adres, of scan de QR-code met de camera van de telefoon. Sta de camera toe; het beeld verschijnt dan hier.</p>
+      <img id="boothQr" alt="QR booth"><code id="boothUrl"></code><p id="httpsNote" style="display:none;color:var(--orange);font-weight:700">Let op: je gebruikt nu een localhost-adres. De telefoon kan dat niet openen. Open deze bedieningspagina via het HTTPS-adres (trycloudflare.com) uit het startvenster.</p></div>
+    <div class="ov" id="ovCount"><div class="info" id="cInfo"></div><div class="num" id="cNum"></div></div>
+    <div class="ov" id="ovRec"><div class="badge"><b></b><span id="recTxt">REC</span></div><div id="recbar"></div></div>
+    <div class="ov" id="ovPrev"><img id="prevImg" alt="Voorbeeld"><div id="prevTxt">Voorbeeld · wordt opgeslagen…</div><form class="nm" id="nameForm" onsubmit="return false"><input id="macName" maxlength="60" placeholder="Naam van de gast" autocomplete="off"><button class="btn" id="bName">Opslaan</button><button type="button" class="btn sec" id="bSkip">Overslaan</button></form></div>
+    <div class="ov" id="ovBusy"><div class="spin"></div><div id="busyTxt">Bezig met opslaan…</div></div>
+    <div class="ov" id="ovDone"><h2 id="doneTitle">Klaar!</h2><img id="doneQr" alt="QR"><a id="doneLink" target="_blank"></a></div>
+    <div class="ov" id="ovErr"><div style="font-size:40px">⚠️</div><div id="errTxt"></div></div>
+    <div id="flash"></div>
+    <div id="tag" style="display:none"></div>
+  </div>
+  <aside>
+    <div class="card">
+      <button class="btn big" id="bStart" disabled>📸 Start</button>
+      <div class="hint">Sneltoetsen: <kbd>spatie</kbd> start, <kbd>Esc</kbd> annuleren / terug naar start, <kbd>F</kbd> volledig scherm.</div>
+    </div>
+    <div id="alert"></div>
+    <div id="audioWarn">🔊 Het geluid op de telefoon staat nog uit. Tik één keer op het scherm van de telefoon.</div>
+    <div class="card"><h3>Telefoon</h3>
+      <div class="grid2">
+        <button class="btn sec" id="bCancel" disabled>✕ Annuleren</button>
+        <button class="btn sec" id="bFlip" disabled>⟲ Camera</button>
+        <button class="btn sec" id="bRot" disabled>180° draaien</button>
+        <button class="btn sec" id="bFull">⛶ Groot beeld</button>
+      </div>
+      <button class="btn warn" id="bReload" style="width:100%;margin-top:10px" disabled>↻ Booth op telefoon herladen</button>
+    </div>
+    <div class="card"><h3>Status</h3>
+      <dl><dt>Scherm</dt><dd id="sScreen">–</dd><dt>Camera</dt><dd id="sCam">–</dd><dt>Beeld</dt><dd id="sRes">–</dd><dt>Verbinding</dt><dd id="sLink">–</dd><dt>Uploads</dt><dd id="sQueue">–</dd></dl>
+      <div class="hint"><a id="dashLink" href="/admin">← Dashboard</a></div>
+    </div>
+  </aside>
+</main>
+</div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop());
+const myId = 'r' + Math.random().toString(36).slice(2, 10);
+const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }] };
+const SCREENS = { boot: 'Opstarten', idle: 'Klaar voor start', count: 'Aftellen', rec: 'Opnemen', review: 'Voorbeeld', upload: 'Opslaan', done: 'Klaar (QR-code)', error: 'Foutmelding' };
+let ev = null, es = null, booth = null, pc = null, st = {}, linkMode = '–', fallback = false, fbTimer = null, rtcTimer = null, frameSeq = 0, lastFlash = -1;
+
+const api = (url, body) => fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {});
+const send = (type, extra) => api(`/api/remote/${encodeURIComponent(slug)}/to-booth`, { type, from: myId, ...(booth ? { to: booth } : {}), ...extra }).catch(() => {});
+
+async function init() {
+  const me = await fetch('/api/me').then((r) => r.json()).catch(() => ({}));
+  if (!me.admin) { $('login').classList.add('on'); return; }
+  $('login').classList.remove('on'); $('ui').style.display = '';
+  try { const r = await fetch(`/api/public/events/${encodeURIComponent(slug)}`); if (r.ok) ev = await r.json(); } catch {}
+  if (ev) { $('evname').textContent = ev.name; document.title = 'Bediening – ' + ev.name; $('bStart').textContent = ev.mode === 'video' ? '🎬 Start 360° video' : '📸 Start fotostrip'; }
+  const pub = (await fetch('/api/public-url').then((r) => r.json()).catch(() => ({}))).url || location.origin; // tunneladres, ook als deze pagina via localhost open staat
+  const bUrl = `${pub}/booth/${encodeURIComponent(slug)}?kiosk&facing=back`;
+  $('boothUrl').textContent = bUrl; $('boothQr').src = `/api/qr?text=${encodeURIComponent(bUrl)}`;
+  if (/^https?:\/\/(localhost|127\.|\[::1\])/.test(pub)) $('httpsNote').style.display = '';
+  connect();
+}
+$('login').onsubmit = async (e) => {
+  e.preventDefault(); $('loginErr').textContent = '';
+  const r = await api('/api/login', { password: $('pw').value });
+  if (r.ok) init(); else $('loginErr').textContent = (await r.json().catch(() => ({}))).error || 'Inloggen mislukt';
+};
+
+const handlers = {
+  booths: (d) => {
+    known = new Set(d.booths);
+    if (booth && !known.has(booth)) { booth = null; closePeer(); st = {}; paintStatus(); }
+    if (!booth && d.booths.length) { booth = d.booths[d.booths.length - 1]; lastHeard = Date.now(); hello(); }
+    paintConn();
+  },
+  msg: (d) => onMsg(d),
+};
+// long-polling: werkt ook door de Cloudflare-tunnel (die houdt event-streams op)
+async function connect() {
+  for (;;) {
+    try {
+      const r = await fetch(`/api/remote/${encodeURIComponent(slug)}/poll?role=remote&id=${myId}`, { cache: 'no-store' });
+      if (r.status === 401) { location.reload(); return; }
+      if (!r.ok) throw new Error(r.status);
+      if ($('connText').textContent.startsWith('Verbinding')) paintConn();
+      for (const m of await r.json()) { try { handlers[m.type] && handlers[m.type](m.data); } catch (err) { console.warn(err); } }
+    } catch {
+      $('conn').className = 'wait'; $('connText').textContent = 'Verbinding met server herstellen…';
+      await new Promise((res) => setTimeout(res, 1500));
+    }
+  }
+}
+function paintConn() {
+  const on = !!booth, silent = on ? Math.round((Date.now() - lastHeard) / 1000) : 0, dead = on && silent > 15;
+  $('conn').className = !on ? '' : dead || st.hidden ? 'wait' : 'on';
+  $('connText').textContent = !on ? 'Wachten op telefoon…' : dead ? `Telefoon reageert niet (${silent} s)` : st.hidden ? 'Telefoon: Chrome staat op de achtergrond' : 'Telefoon verbonden';
+  $('alert').classList.toggle('on', on && (dead || !!st.hidden || stuck()));
+  $('alert').textContent = !on ? '' : dead ? '⚠ De telefoon reageert niet meer. Staat het scherm uit, is Chrome gesloten of is de wifi weg? Zet het scherm aan en open de booth in Chrome weer op de voorgrond.'
+    : st.hidden ? '⚠ Chrome staat op de telefoon op de achtergrond of het scherm is uit. Dan stopt de camera en kan een opname vastlopen. Zet de booth weer op de voorgrond.'
+    : stuck() ? '⚠ De telefoon staat al lang op hetzelfde scherm. Loopt hij vast? Klik op Annuleren, of op Booth op telefoon herladen.' : '';
+  $('ovWait').classList.toggle('on', !on);
+  ['bStart', 'bCancel', 'bFlip', 'bRot', 'bReload'].forEach((id) => { $(id).disabled = !on; });
+  if (on) paintStatus();
+}
+
+const stuck = () => ['upload', 'rec', 'count'].includes(st.screen) && screenSince && Date.now() - screenSince > 90000;
+setInterval(() => { if (booth) paintConn(); }, 2000);
+
+/* ---- live beeld: eerst WebRTC (direct), anders JPEG via de server ---- */
+function closePeer() {
+  if (pc) { pc.close(); pc = null; }
+  stopFallback(); $('vid').srcObject = null; clearTimeout(rtcTimer); linkMode = '–'; paintInfo();
+}
+function hello() {
+  closePeer(); send('hello');
+  rtcTimer = setTimeout(() => { if (!pc || pc.connectionState !== 'connected') startFallback(); }, 8000);
+}
+async function onOffer(m) {
+  if (pc) pc.close();
+  pc = new RTCPeerConnection(ICE);
+  const p = pc;
+  p.ontrack = (e) => { $('vid').srcObject = e.streams[0] || new MediaStream([e.track]); $('vid').play().catch(() => {}); };
+  p.onicecandidate = (e) => { if (e.candidate) send('ice', { candidate: e.candidate }); };
+  p.onconnectionstatechange = () => {
+    if (p !== pc) return;
+    if (p.connectionState === 'connected') { clearTimeout(rtcTimer); stopFallback(); linkMode = 'Direct (WebRTC)'; paintInfo(); }
+    if (p.connectionState === 'failed') startFallback();
+    if (p.connectionState === 'disconnected') setTimeout(() => { if (p === pc && p.connectionState !== 'connected') hello(); }, 4000);
+  };
+  await p.setRemoteDescription(m.sdp);
+  const ans = await p.createAnswer(); await p.setLocalDescription(ans);
+  send('answer', { sdp: p.localDescription });
+}
+function startFallback() {
+  if (fallback || !booth) return;
+  fallback = true; linkMode = 'Via server (reserve)'; paintInfo();
+  $('vid').style.display = 'none'; $('jpg').style.display = '';
+  send('want-frames'); fbTimer = setInterval(() => send('want-frames'), 2000);
+  pullFrames();
+}
+function stopFallback() { fallback = false; clearInterval(fbTimer); $('vid').style.display = ''; $('jpg').style.display = 'none'; }
+async function pullFrames() {
+  while (fallback) {
+    try {
+      const r = await fetch(`/api/remote/${encodeURIComponent(slug)}/frame?after=${frameSeq}`, { cache: 'no-store' });
+      if (r.status === 200) {
+        frameSeq = +r.headers.get('X-Frame-Seq') || frameSeq + 1;
+        const url = URL.createObjectURL(await r.blob()), img = $('jpg'), old = img.src;
+        img.src = url; if (old.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(old), 1000);
+      } else if (r.status !== 204) await new Promise((res) => setTimeout(res, 1000));
+    } catch { await new Promise((res) => setTimeout(res, 1000)); }
+  }
+}
+
+/* ---- berichten van de telefoon ---- */
+let known = new Set(), lastHeard = 0, screenSince = 0;
+function onMsg(m) {
+  // alleen berichten van de booth die nu echt verbonden is (geen oude, onthouden status)
+  if (!m.from || m.from !== booth || !known.has(m.from)) return;
+  const wasDead = Date.now() - lastHeard > 15000;
+  lastHeard = Date.now();
+  if (wasDead) paintConn();
+  if (m.type === 'ready') { if (!pc || pc.connectionState !== 'connected') hello(); return; }
+  if (m.type === 'offer') return onOffer(m).catch((e) => { console.warn(e); startFallback(); });
+  if (m.type === 'ice') { if (pc && m.candidate) pc.addIceCandidate(m.candidate).catch(() => {}); return; }
+  if (m.type === 'status') { if (m.screen !== st.screen) screenSince = Date.now(); st = m; paintStatus(); }
+}
+function show(id) { ['ovCount', 'ovRec', 'ovPrev', 'ovBusy', 'ovDone', 'ovErr'].forEach((x) => $(x).classList.toggle('on', x === id)); }
+function paintStatus() {
+  const s = st.screen;
+  if (s === 'count') { show('ovCount'); $('cNum').textContent = st.num || ''; $('cInfo').textContent = st.info || ''; }
+  else if (s === 'rec') {
+    show('ovRec'); $('recTxt').textContent = 'REC  ' + (st.recLeft ?? '') + 's';
+    $('recbar').style.width = st.recTotal ? Math.min(100, (1 - (st.recLeft - 1) / st.recTotal) * 100) + '%' : '0';
+  }
+  else if (s === 'review' && st.preview) {
+    show('ovPrev'); if ($('prevImg').src !== st.preview) $('prevImg').src = st.preview;
+    $('ovPrev').classList.toggle('ask', !!st.askName);
+    $('prevTxt').textContent = st.askName ? 'Gast vult de naam in op de booth… (of typ hem hier)' : 'Voorbeeld · wordt opgeslagen…';
+    if (st.askName && document.activeElement !== $('macName')) $('macName').value = st.typed || '';
+  }
+  else if (s === 'upload' || s === 'review') {
+    show('ovBusy');
+    $('busyTxt').textContent = st.progress != null ? `${st.progressLabel || 'Video wordt klaargemaakt…'} ${st.progress}%${st.progressLeft != null ? ' · nog ±' + st.progressLeft + ' s' : ''}`
+      : st.mode === 'video' ? 'Video wordt klaargemaakt…' : 'Fotostrip wordt opgeslagen…';
+  }
+  else if (s === 'done' && st.share) {
+    show('ovDone'); $('doneTitle').textContent = st.kind === 'video' ? 'Video klaar! 🎬' : 'Fotostrip klaar! 🎉';
+    $('doneQr').src = `/api/qr?text=${encodeURIComponent(st.share)}&fg=%235b21b6`; $('doneLink').href = st.share; $('doneLink').textContent = st.share;
+  }
+  else if (s === 'error') { show('ovErr'); $('errTxt').textContent = st.err || 'Er ging iets mis op de telefoon.'; }
+  else show(null);
+  if (s !== 'rec') $('recbar').style.width = '0';
+  if (lastFlash === -1) lastFlash = st.flash || 0; // oude flits uit de cache niet tonen
+  if (st.flash && st.flash !== lastFlash) { lastFlash = st.flash; { const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); } }
+  const busy = ['count', 'rec', 'upload', 'review', 'boot'].includes(s);
+  $('bStart').disabled = !booth || busy || s === 'error';
+  $('bCancel').disabled = !booth || s === 'idle';
+  $('bCancel').textContent = ['done', 'error'].includes(s) ? '← Terug naar start' : '✕ Annuleren';
+  $('bRot').classList.toggle('on', !!st.rot); $('bRot').textContent = st.rot ? '180° (aan)' : '180° draaien';
+  $('audioWarn').classList.toggle('on', !!booth && st.audio === false);
+  ['vid', 'jpg'].forEach((id) => { $(id).classList.toggle('mirror', !!st.mirror); $(id).classList.toggle('rot', !!st.rot); });
+  paintInfo();
+}
+function paintInfo() {
+  $('sScreen').textContent = booth ? (SCREENS[st.screen] || st.screen || '–') : 'Niet verbonden';
+  $('sCam').textContent = st.cam || '–';
+  $('sRes').textContent = st.res ? `${st.res} · ${st.fps || '?'} fps` : '–';
+  $('sLink').textContent = linkMode;
+  $('sQueue').textContent = !booth || st.queue == null ? '–' : (st.online === false ? `⚠ booth heeft geen internet · ${st.queue} wachten` : (st.queue ? `${st.queue} bezig met uploaden` : 'Alles geüpload ✓'));
+  $('tag').style.display = booth && linkMode !== '–' ? '' : 'none'; $('tag').textContent = linkMode;
+}
+
+/* ---- knoppen ---- */
+$('bStart').onclick = () => send('start');
+$('bName').onclick = () => { const n = $('macName').value.trim(); send('name', n ? { name: n } : { skip: true }); $('macName').blur(); };
+$('bSkip').onclick = () => { send('name', { skip: true }); $('macName').blur(); };
+$('bCancel').onclick = () => send('cancel');
+$('bFlip').onclick = () => send('flip');
+$('bRot').onclick = () => send('rot');
+$('bReload').onclick = () => { if (confirm('De booth op de telefoon opnieuw laden?')) send('reload'); };
+$('bFull').onclick = () => { const s = $('stage'); if (document.fullscreenElement) document.exitFullscreen(); else (s.requestFullscreen || s.webkitRequestFullscreen).call(s); };
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || !booth) return;
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!$('bStart').disabled) send('start'); }
+  else if (e.code === 'Escape' && !document.fullscreenElement) send('cancel');
+  else if (e.key === 'f' || e.key === 'F') $('bFull').onclick();
+});
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Galerij</title>
+<link rel="icon" href="/festiq-logo.jpg">
+<style>
+:root{--brand:#ff2a93;--on-brand:#fff;--cream:#fcf8ef;--ink:#1c1b22}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",-apple-system,system-ui,sans-serif}
+header{padding:22px 20px 12px;text-align:center}
+.logo{width:min(320px,72vw);height:auto;display:block;margin:0 auto 6px}
+h1{margin:0 0 4px;font-size:clamp(22px,4.5vw,34px);font-weight:900}
+.meta{opacity:.65;font-size:15px}
+.actions{margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+button,a.btn{background:linear-gradient(135deg,#ff2a93,#7c3aed);color:#fff;box-shadow:0 6px 18px #7c3aed33;border:0;border-radius:999px;padding:11px 22px;font-weight:600;font-size:15px;font-family:inherit;cursor:pointer;text-decoration:none}
+button.ghost{background:#fff;color:var(--ink);box-shadow:0 2px 10px #0001}
+main{columns:4 240px;column-gap:12px;padding:12px;max-width:1500px;margin:0 auto}
+.item{break-inside:avoid;margin-bottom:12px;position:relative;border-radius:12px;overflow:hidden;cursor:pointer;background:#fff;box-shadow:0 4px 18px #1c1b2222}
+.item img,.item video{display:block;width:100%;height:auto}
+.badge{position:absolute;top:8px;right:8px;background:#000a;color:#fff;border-radius:999px;padding:3px 10px;font-size:12px}
+.empty{text-align:center;opacity:.6;padding:80px 20px}
+#lb{position:fixed;inset:0;background:#fcf8efee;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:10;padding:20px}
+#lb.show{display:flex}
+#lb img,#lb video{max-width:94vw;max-height:78vh;border-radius:12px}
+#slide{position:fixed;inset:0;background:#000;display:none;align-items:center;justify-content:center;z-index:20}
+#slide.show{display:flex}
+#slide img,#slide video{max-width:100vw;max-height:100vh;object-fit:contain;animation:fade 1s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+</style>
+</head>
+<body>
+<header>
+  <img class="logo" src="/festiq-wordmark.jpg" alt="Festiq">
+  <h1 id="title">Galerij</h1>
+  <div class="meta" id="meta"></div>
+  <div class="actions"><button id="btnSlide" class="ghost">▶ Diavoorstelling</button></div>
+</header>
+<main id="grid"></main>
+<div class="empty" id="empty" style="display:none">Nog geen foto's. Kom straks terug!</div>
+<div id="lb"><div id="lbmedia"></div><div><a class="btn" id="lbdl" download>Download</a> <button class="ghost" id="lbclose">Sluiten</button></div></div>
+<div id="slide"></div>
+<script>
+const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop());
+const $ = (i) => document.getElementById(i);
+let items = [], seen = '', slideTimer = null;
+
+function tag(m, opts = '') {
+  const u = `/media/${m.filename}`;
+  return m.kind === 'video' ? `<video src="${u}" ${opts} muted loop playsinline preload="metadata"></video>` : `<img src="${u}" ${opts} loading="lazy" alt="">`;
+}
+function render() {
+  $('grid').innerHTML = items.map((m, i) => `<div class="item" data-i="${i}">${tag(m, m.kind === 'video' ? 'autoplay' : '')}${m.kind === 'video' ? '<span class="badge">▶ 360°</span>' : ''}</div>`).join('');
+  $('empty').style.display = items.length ? 'none' : 'block';
+}
+async function load(first) {
+  try {
+    const r = await fetch(`/api/public/events/${encodeURIComponent(slug)}/media`);
+    if (!r.ok) { if (first) { $('title').textContent = 'Galerij niet beschikbaar'; $('btnSlide').style.display = 'none'; } return; }
+    const list = await r.json();
+    const sig = list.map((m) => m.id).join();
+    if (sig !== seen) { seen = sig; items = list; render(); }
+  } catch {}
+}
+async function init() {
+  const r = await fetch(`/api/public/events/${encodeURIComponent(slug)}`);
+  if (r.ok) {
+    const ev = await r.json();
+    document.title = ev.name + ' – Galerij';
+    document.documentElement.style.setProperty('--brand', ev.brand_color);
+    const n = parseInt(ev.brand_color.slice(1), 16);
+    const l = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    document.documentElement.style.setProperty('--on-brand', l > .62 ? '#111' : '#fff');
+    $('title').textContent = ev.name;
+    $('meta').textContent = [ev.date && new Date(ev.date + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }), ev.location].filter(Boolean).join(' · ');
+  }
+  await load(true);
+  setInterval(load, 10000);
+  if (new URLSearchParams(location.search).has('slideshow')) startSlide();
+}
+$('grid').onclick = (e) => {
+  const it = e.target.closest('.item'); if (!it) return;
+  const m = items[+it.dataset.i];
+  $('lbmedia').innerHTML = tag(m, m.kind === 'video' ? 'controls autoplay' : '');
+  $('lbdl').href = `/media/${m.filename}?dl`;
+  $('lb').classList.add('show');
+};
+$('lbclose').onclick = () => { $('lb').classList.remove('show'); $('lbmedia').innerHTML = ''; };
+function startSlide() {
+  if (!items.length) return;
+  let i = 0; const box = $('slide'); box.classList.add('show');
+  const next = () => {
+    if (!items.length) return;
+    const m = items[i++ % items.length];
+    box.innerHTML = tag(m, m.kind === 'video' ? 'autoplay' : '');
+    slideTimer = setTimeout(next, m.kind === 'video' ? 8000 : 5000);
+  };
+  next();
+  try { document.documentElement.requestFullscreen(); } catch {}
+}
+$('btnSlide').onclick = startSlide;
+$('slide').onclick = () => { clearTimeout(slideTimer); $('slide').classList.remove('show'); $('slide').innerHTML = ''; if (document.fullscreenElement) document.exitFullscreen(); };
+init();
+</script>
+</body>
+</html>
