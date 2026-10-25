@@ -17,7 +17,8 @@
   --grad:linear-gradient(135deg,var(--pink),var(--purple));
   --font:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",-apple-system,system-ui,sans-serif}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-html,body{margin:0;height:100%;background:var(--cream);color:#fff;overflow:hidden;font-family:var(--font);touch-action:manipulation}
+html,body{margin:0;height:100%;background:var(--cream);color:#fff;overflow:hidden;font-family:var(--font);touch-action:none} /* geen knijp-zoom door gasten */
+input,button{touch-action:manipulation}
 #app{position:fixed;inset:0}
 video#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#2a2733}
 video#cam.mirror{transform:scaleX(-1)}
@@ -26,6 +27,30 @@ video#cam.rot.mirror{transform:rotate(180deg) scaleX(-1)}
 #btnRot{font-size:13px;font-weight:800;font-family:inherit}
 #btnRot.on,#btnFrame.on{background:var(--pink);color:#fff}
 #app.fit video#cam{object-fit:contain;background:#14131a}
+#app.fit,#app.zoomed{background:#14131a}
+/* vergrendeld: gasten zien geen knoppen */
+body.locked #toolbtns{display:none}
+/* zoompaneel (alleen voor beheerders) */
+#zoompanel{position:absolute;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:30;display:none;flex-direction:column;gap:12px;
+  background:#fffffff2;color:var(--ink);border-radius:24px;padding:16px 20px;box-shadow:0 12px 40px #0006;width:min(560px,92vw)}
+body.zooming #zoompanel{display:flex}
+body.zooming #idle>*{visibility:hidden} body.zooming #idle{background:none}
+body.zooming #app{cursor:grab}
+#zoompanel .zr{display:flex;align-items:center;gap:12px}
+#zoompanel input[type=range]{flex:1;accent-color:var(--pink);height:34px}
+#zoompanel b{min-width:52px;text-align:right;font-size:20px}
+#zoompanel .zb{border:0;border-radius:14px;background:#f3eff8;color:var(--ink);font:inherit;font-weight:800;font-size:22px;width:48px;height:44px;cursor:pointer}
+#zoompanel .zh{font-size:13px;opacity:.65;font-weight:600}
+#zoompanel .row{justify-content:space-between;gap:10px}
+#zoompanel .pb{border:0;border-radius:999px;font:inherit;font-weight:800;font-size:15px;padding:12px 18px;cursor:pointer;background:#f3eff8;color:var(--ink)}
+#zoompanel .pb.pri{background:var(--grad);color:#fff}
+/* ontgrendelen */
+#unlock{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:#14131acc}
+#unlock.on{display:flex}
+#unlock form{background:#fff;color:var(--ink);border-radius:24px;padding:24px;width:min(380px,90vw);display:flex;flex-direction:column;gap:12px;text-align:center;box-shadow:0 14px 50px #0008}
+#unlock input{-webkit-user-select:text;user-select:text;font:inherit;font-size:20px;padding:14px 16px;border-radius:14px;border:3px solid #e8e3ef;outline:none}
+#unlock input:focus{border-color:var(--pink)}
+#unlockErr{color:#b0124f;font-weight:700;min-height:1.2em;font-size:14px}
 #frameov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 #app:not([data-screen=idle]):not([data-screen=count]):not([data-screen=rec]) #frameov{visibility:hidden}
 .layer{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;
@@ -138,6 +163,8 @@ body.kiosk #toolbtns:hover{opacity:1}
       <button class="iconbtn" id="btnRot" title="Beeld 180° draaien" aria-label="Beeld 180 graden draaien">180°</button>
       <button class="iconbtn" id="btnFlip" title="Camera wisselen" aria-label="Camera wisselen">⟲</button>
       <button class="iconbtn" id="btnFrame" title="Videokader tonen in het live beeld" aria-label="Videokader tonen" style="display:none">▣</button>
+      <button class="iconbtn" id="btnZoom" title="Inzoomen (beheer)" aria-label="Inzoomen">🔍</button>
+      <button class="iconbtn" id="btnLock" title="Booth vergrendelen: gasten zien geen knoppen meer" aria-label="Vergrendelen">🔒</button>
       <button class="iconbtn" id="btnFull" title="Volledig scherm" aria-label="Volledig scherm">⛶</button>
     </div>
   </div>
@@ -188,6 +215,18 @@ body.kiosk #toolbtns:hover{opacity:1}
     <div class="row"><button class="btn small" id="btnErrAction">Opnieuw proberen</button><button class="btn ghost small" id="btnErrBack" style="display:none">Terug</button></div>
   </div>
   <div id="flash"></div>
+  <div id="zoompanel">
+    <div class="zr"><button class="zb" id="zMinus" aria-label="Uitzoomen">−</button><input type="range" id="zRange" min="1" max="4" step="0.05" value="1" aria-label="Zoom"><button class="zb" id="zPlus" aria-label="Inzoomen">+</button><b id="zVal">1.0×</b></div>
+    <div class="zh" id="zHint">Sleep over het beeld om het uitsnede te verschuiven.</div>
+    <div class="row"><button class="pb" id="zReset">Uitzoomen</button><button class="pb" id="zCenter">Midden</button><button class="pb" id="zLock">🔒 Vergrendelen</button><button class="pb pri" id="zDone">Klaar</button></div>
+  </div>
+  <div id="unlock"><form id="unlockForm" autocomplete="off" onsubmit="return false">
+    <div style="font-size:40px">🔒</div><h2 style="margin:0">Booth ontgrendelen</h2>
+    <div style="font-size:14px;opacity:.7">Alleen voor de beheerder: vul het wachtwoord van het dashboard in.</div>
+    <input type="password" id="unlockPw" placeholder="Wachtwoord" autocomplete="off">
+    <div id="unlockErr"></div>
+    <div class="row" style="justify-content:center"><button type="button" class="btn ghost small" id="unlockCancel">Annuleren</button><button type="submit" class="btn small" id="unlockOk">Ontgrendelen</button></div>
+  </form></div>
   <div id="rmt"><b></b><span>Bediend vanaf Mac</span></div>
   <div id="netq"><b></b><span></span></div>
   <div id="tapaudio">🔊 Tik één keer op het scherm om het geluid aan te zetten</div>
@@ -222,7 +261,7 @@ function camSrc() {
   x.save(); x.translate(w, h); x.rotate(Math.PI); x.drawImage(cam, 0, 0, w, h); x.restore();
   return rotCv;
 }
-function applyRot() { cam.classList.toggle('rot', rot180); $('btnRot').classList.toggle('on', rot180); report({ rot: rot180 }); }
+function applyRot() { cam.classList.toggle('rot', rot180); $('btnRot').classList.toggle('on', rot180); report({ rot: rot180 }); try { layoutCam(); } catch {} }
 const getCtx = () => (audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)());
 
 const GRADS = ['linear-gradient(135deg,#ff2a93,#ffa41c)', 'linear-gradient(135deg,#ffa41c,#ff2a93)', 'linear-gradient(135deg,#7c3aed,#1eb4ff)', 'linear-gradient(135deg,#1eb4ff,#7c3aed)'];
@@ -254,11 +293,12 @@ function drawFrameOv() {
   $('btnFrame').classList.toggle('on', showFrameOv);
   c.style.display = on ? '' : 'none';
   app.classList.toggle('fit', on); // met kader: het hele camerabeeld tonen (zoals het in de video komt), niet bijgesneden
+  layoutCam();
   if (!on) return;
   const dpr = Math.min(2, window.devicePixelRatio || 1), W = innerWidth, Hh = innerHeight;
   c.width = Math.round(W * dpr); c.height = Math.round(Hh * dpr);
   const x = c.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, Hh);
-  const vw = cam.videoWidth, vh = cam.videoHeight, sc = Math.min(W / vw, Hh / vh), dw = vw * sc, dh = vh * sc;
+  const vw = cam.videoWidth, vh = cam.videoHeight, zz = digZ(), sc = Math.min(W / (vw / zz), Hh / (vh / zz)), dw = vw / zz * sc, dh = vh / zz * sc;
   const s = Math.min(1, 1920 / vw), ow = Math.round(vw * s), oh = Math.round(vh * s); // afmetingen van de echte video
   x.translate((W - dw) / 2, (Hh - dh) / 2); x.scale(dw / ow, dh / oh);
   try { drawOutOverlay(x, ow, oh); } catch {}
@@ -266,6 +306,121 @@ function drawFrameOv() {
 addEventListener('resize', () => drawFrameOv());
 cam.addEventListener('resize', () => { drawFrameOv(); if (cam.videoWidth) report({ res: `${cam.videoWidth}x${cam.videoHeight}` }); }); // bijv. telefoon gedraaid
 cam.addEventListener('loadedmetadata', () => drawFrameOv());
+
+/* ---------- zoom (alleen voor beheerders) ----------
+   zoom.z = 1..4 (of zover de camera zelf kan), zoom.x / zoom.y = midden van de uitsnede zoals je hem op het scherm ziet.
+   Kan de camera zelf zoomen (veel Android-telefoons), dan gebruiken we dat: scherper dan digitaal inzoomen. */
+const ZKEY = 'pbZoom:' + slug;
+let zoom = { z: 1, x: 0.5, y: 0.5 }, hwZoom = null;
+try { const j = JSON.parse(localStorage.getItem(ZKEY) || 'null'); if (j && j.z >= 1) zoom = { z: +j.z, x: +j.x || .5, y: +j.y || .5 }; } catch {}
+const digZ = () => (hwZoom ? 1 : zoom.z);
+function clampZoom() {
+  zoom.z = Math.max(1, Math.min(hwZoom ? hwZoom.max : 4, +zoom.z || 1));
+  const m = 1 / (2 * digZ());
+  zoom.x = Math.min(1 - m, Math.max(m, +zoom.x || .5)); zoom.y = Math.min(1 - m, Math.max(m, +zoom.y || .5));
+}
+/* uitsnede in pixels van het camerabeeld; space 'src' = na 180°-draaiing (camSrc), 'raw' = rechtstreeks van de camera */
+function cropRect(space, vw, vh) {
+  const z = digZ(); if (!vw || z <= 1.001) return null;
+  const cw = vw / z, ch = vh / z;
+  let xf = mirror ? 1 - zoom.x : zoom.x, yf = zoom.y;
+  if (space === 'raw' && rot180) { xf = 1 - xf; yf = 1 - yf; }
+  return { sx: xf * vw - cw / 2, sy: yf * vh - ch / 2, sw: cw, sh: ch };
+}
+/* live beeld op de booth: video-element zo groot en zo geplaatst dat precies de uitsnede in beeld is */
+function layoutCam() {
+  const vw = cam.videoWidth, vh = cam.videoHeight, z = digZ();
+  app.classList.toggle('zoomed', z > 1.001);
+  if (!vw || z <= 1.001) { cam.style.cssText = ''; return; }
+  const W = innerWidth, H = innerHeight, cw = vw / z, ch = vh / z;
+  const s = app.classList.contains('fit') ? Math.min(W / cw, H / ch) : Math.max(W / cw, H / ch);
+  cam.style.cssText = `inset:auto;left:${W / 2 - zoom.x * vw * s}px;top:${H / 2 - zoom.y * vh * s}px;width:${vw * s}px;height:${vh * s}px;object-fit:fill`;
+}
+async function setupHwZoom() {
+  hwZoom = null;
+  try {
+    const tr = stream && stream.getVideoTracks()[0], c = tr && tr.getCapabilities && tr.getCapabilities();
+    if (c && c.zoom && c.zoom.max > 1.01 && !params.has('digizoom')) hwZoom = { min: c.zoom.min || 1, max: Math.min(c.zoom.max, 10) };
+  } catch {}
+  applyZoom(false);
+}
+let zTimer = null;
+function applyZoom(save = true) {
+  clampZoom();
+  if (hwZoom) { clearTimeout(zTimer); zTimer = setTimeout(() => { try { stream.getVideoTracks()[0].applyConstraints({ advanced: [{ zoom: Math.max(hwZoom.min, zoom.z) }] }).catch(() => {}); } catch {} }, 60); }
+  layoutCam(); try { drawFrameOv(); } catch {}
+  $('zRange').max = hwZoom ? hwZoom.max : 4; $('zRange').value = zoom.z; $('zVal').textContent = zoom.z.toFixed(1) + '×';
+  $('zHint').textContent = hwZoom ? 'De camera zoomt zelf in (scherpst). Verschuiven doe je door de camera te richten.' : (zoom.z > 1.001 ? 'Sleep over het beeld om de uitsnede te verschuiven.' : 'Zoom in met de schuif of + .');
+  $('btnZoom').classList.toggle('on', zoom.z > 1.001);
+  if (save) try { localStorage.setItem(ZKEY, JSON.stringify(zoom)); } catch {}
+  report({ zoom: { z: +zoom.z.toFixed(2), x: +zoom.x.toFixed(3), y: +zoom.y.toFixed(3), hw: !!hwZoom, max: hwZoom ? hwZoom.max : 4 }, locked });
+}
+addEventListener('resize', () => layoutCam());
+cam.addEventListener('loadedmetadata', () => layoutCam());
+
+/* zoompaneel en slepen */
+function openZoom() { if (locked) return; document.body.classList.add('zooming'); applyZoom(false); }
+function closeZoom() { document.body.classList.remove('zooming'); }
+$('btnZoom').onclick = (e) => { e.stopPropagation(); document.body.classList.contains('zooming') ? closeZoom() : openZoom(); };
+$('zRange').oninput = () => { zoom.z = +$('zRange').value; applyZoom(); };
+$('zMinus').onclick = () => { zoom.z = Math.round((zoom.z - 0.1) * 10) / 10; applyZoom(); };
+$('zPlus').onclick = () => { zoom.z = Math.round((zoom.z + 0.1) * 10) / 10; applyZoom(); };
+$('zReset').onclick = () => { zoom = { z: 1, x: .5, y: .5 }; applyZoom(); };
+$('zCenter').onclick = () => { zoom.x = .5; zoom.y = .5; applyZoom(); };
+$('zDone').onclick = closeZoom;
+$('zLock').onclick = () => { closeZoom(); setLocked(true); };
+let drag = null;
+app.addEventListener('pointerdown', (e) => {
+  if (!document.body.classList.contains('zooming') || e.target.closest('#zoompanel,#top')) return;
+  drag = { x: e.clientX, y: e.clientY, zx: zoom.x, zy: zoom.y }; e.preventDefault();
+});
+addEventListener('pointermove', (e) => {
+  if (!drag || hwZoom || zoom.z <= 1.001) return;
+  const vw = cam.videoWidth, vh = cam.videoHeight; if (!vw) return;
+  const W = innerWidth, H = innerHeight, cw = vw / zoom.z, ch = vh / zoom.z;
+  const s = app.classList.contains('fit') ? Math.min(W / cw, H / ch) : Math.max(W / cw, H / ch);
+  zoom.x = drag.zx - (e.clientX - drag.x) / (vw * s); zoom.y = drag.zy - (e.clientY - drag.y) / (vh * s);
+  applyZoom(false);
+});
+addEventListener('pointerup', () => { if (drag) { drag = null; applyZoom(); } });
+
+/* vergrendelen: gasten zien geen knoppen. Ontgrendelen: houd het logo 3 seconden vast en vul het dashboard-wachtwoord in. */
+let locked = false;
+try { locked = localStorage.getItem('pbLocked') === '1'; } catch {}
+function setLocked(v) {
+  locked = !!v; document.body.classList.toggle('locked', locked); if (locked) closeZoom();
+  try { localStorage.setItem('pbLocked', locked ? '1' : '0'); } catch {}
+  report({ locked });
+}
+$('btnLock').onclick = (e) => { e.stopPropagation(); setLocked(true); };
+let lpTimer = null;
+$('logo').addEventListener('pointerdown', () => { clearTimeout(lpTimer); lpTimer = setTimeout(() => { if (locked) showUnlock(); else openZoom(); }, 3000); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach((t) => $('logo').addEventListener(t, () => clearTimeout(lpTimer)));
+$('logo').addEventListener('contextmenu', (e) => e.preventDefault());
+function showUnlock() { $('unlockPw').value = ''; $('unlockErr').textContent = ''; $('unlock').classList.add('on'); setTimeout(() => $('unlockPw').focus(), 100); }
+$('unlockCancel').onclick = () => $('unlock').classList.remove('on');
+const pwHash = async (pw) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('festiq-booth:' + pw)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+$('unlockForm').addEventListener('submit', (e) => { e.preventDefault(); doUnlock(); });
+async function doUnlock() {
+  const pw = $('unlockPw').value; if (!pw) return;
+  $('unlockOk').disabled = true; $('unlockErr').textContent = '';
+  let ok = false;
+  try {
+    const r = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
+    if (r.ok) { ok = true; try { localStorage.setItem('pbOpHash', await pwHash(pw)); } catch {} }
+    else if (r.status === 429) $('unlockErr').textContent = 'Te veel pogingen, probeer het later opnieuw.';
+  } catch { // geen internet: vergelijk met het wachtwoord dat hier eerder goed was
+    try { ok = !!localStorage.getItem('pbOpHash') && localStorage.getItem('pbOpHash') === await pwHash(pw); } catch {}
+    if (!ok && !localStorage.getItem('pbOpHash')) $('unlockErr').textContent = 'Geen internet. Ontgrendel deze booth één keer met internet, daarna kan het ook offline.';
+  }
+  $('unlockOk').disabled = false;
+  if (ok) { $('unlock').classList.remove('on'); setLocked(false); openZoom(); }
+  else if (!$('unlockErr').textContent) $('unlockErr').textContent = 'Onjuist wachtwoord';
+}
+document.body.classList.toggle('locked', locked);
+/* knijpen/dubbeltikken om in te zoomen op de pagina blokkeren (iPad Safari negeert user-scalable=no) */
+['gesturestart', 'gesturechange'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault()));
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
 /* ---------- resultaat tekenen (ontwerp + filter) ---------- */
 const curTpl = () => ev.templates[0];
@@ -316,6 +471,7 @@ async function startCamera() {
   mirror = s.facingMode ? s.facingMode === 'user' : facing === 'user';
   cam.classList.toggle('mirror', mirror);
   setTimeout(drawFrameOv, 50);
+  setupHwZoom();
   const tr = stream.getVideoTracks()[0];
   report({ mirror, cam: tr.label, res: `${cam.videoWidth || s.width}x${cam.videoHeight || s.height}`, fps: Math.round(s.frameRate || 0) });
   RM.trackChanged(tr);
@@ -327,7 +483,8 @@ function grabFrame() {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const x = c.getContext('2d');
   if (mirror) { x.translate(w, 0); x.scale(-1, 1); }
-  x.drawImage(camSrc(), 0, 0, w, h);
+  const src = camSrc(), cr = cropRect('src', cam.videoWidth, cam.videoHeight);
+  if (cr) x.drawImage(src, cr.sx, cr.sy, cr.sw, cr.sh, 0, 0, w, h); else x.drawImage(src, 0, 0, w, h);
   return c;
 }
 
@@ -518,7 +675,7 @@ async function recordVideo() {
   let out;
   if (!ev.slowmo) {
     out = await recordPass({ w, h: H, maxSecs: secs, musicSecs: secs, music: true, bitrate: OUT_BPS, tick, drive: cam,
-      draw: (x) => { drawFiltered(x, camSrc(), null, 0, 0, w, h, filter, mirror); overlay(x); }, stop: (el) => el >= secs });
+      draw: (x) => { drawFiltered(x, camSrc(), cropRect('src', cam.videoWidth, cam.videoHeight), 0, 0, w, h, filter, mirror); overlay(x); }, stop: (el) => el >= secs });
   } else {
     // Pass 1: ruwe opname + bewegingsmeting
     const mc = document.createElement('canvas'); mc.width = 48; mc.height = 27;
@@ -526,7 +683,7 @@ async function recordVideo() {
     let prev = null; const motion = [];
     const p1 = await recordPass({ w, h, maxSecs: secs, bitrate: RAW_BPS, tick, drive: cam, stop: (el) => el >= secs,
       draw: (x, el) => {
-        drawFiltered(x, camSrc(), null, 0, 0, w, h, filter, mirror);
+        drawFiltered(x, camSrc(), cropRect('src', cam.videoWidth, cam.videoHeight), 0, 0, w, h, filter, mirror);
         mx.drawImage(cam, 0, 0, 48, 27);
         const d = mx.getImageData(0, 0, 48, 27).data; let s = 0;
         if (prev) for (let i = 0; i < d.length; i += 4) s += Math.abs(d[i] - prev[i]) + Math.abs(d[i + 1] - prev[i + 1]) + Math.abs(d[i + 2] - prev[i + 2]);
@@ -905,6 +1062,10 @@ const RM = (() => {
         return finishName(!!m.skip || !$('guestName').value.trim());
       case 'flip': return $('btnFlip').onclick();
       case 'rot': return $('btnRot').onclick();
+      case 'zoom': // vanaf de Mac (beheerder)
+        if (m.z != null) zoom.z = +m.z; if (m.x != null) zoom.x = +m.x; if (m.y != null) zoom.y = +m.y;
+        return applyZoom();
+      case 'lock': return setLocked(!!m.locked);
       case 'reload': return location.reload();
       case 'ping': return post({ ...status, to: m.from });
     }
@@ -926,7 +1087,7 @@ const RM = (() => {
         if (pcv.width !== w || pcv.height !== h) { pcv.width = w; pcv.height = h; }
         pctx.save();
         if (rot180) { pctx.translate(w, h); pctx.rotate(Math.PI); }
-        drawFiltered(pctx, cam, null, 0, 0, w, h, filter, mirror);
+        drawFiltered(pctx, cam, cropRect('raw', vw, vh), 0, 0, w, h, filter, mirror);
         pctx.restore();
       }
     } catch {}

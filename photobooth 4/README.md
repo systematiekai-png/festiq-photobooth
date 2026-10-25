@@ -116,6 +116,14 @@ Foto's, video's, muziek en de database staan op een blijvende schijf (`/data`, 1
 
 Op het dashboard-overzicht staat bij elk evenement met foto's of video's ook een ZIP-knop, en bovenaan de evenementenlijst staat **⬇ Alles downloaden (ZIP)** om alles van alle evenementen in één keer te downloaden (per evenement in een eigen map binnen de ZIP).
 
+## Inzoomen en vergrendelen (alleen voor beheerders)
+
+- **Inzoomen op de booth**: tik op **🔍** bovenin. Zoom met de schuif of − / +, en sleep over het beeld om de uitsnede te verschuiven. Het inzoomen geldt voor alles: het live beeld, de foto's, de fotostrip, de 360°-video en het beeld op de Mac. De instelling wordt per booth onthouden.
+- **Vergrendelen**: tik op **🔒** (of op "Vergrendelen" in het zoompaneel). De knoppen verdwijnen; gasten kunnen dan niet zoomen, draaien of van camera wisselen. Ook inzoomen met twee vingers op de pagina is geblokkeerd.
+- **Ontgrendelen**: houd het **logo linksboven 3 seconden** vast en vul het wachtwoord van het dashboard in. Is de booth één keer met internet ontgrendeld, dan werkt dit daarna ook zonder internet.
+- **Vanaf de Mac**: op de bedieningspagina staat "Zoom & vergrendeling": zoomen, verschuiven door over het live beeld te slepen, en de booth vergrendelen/ontgrendelen zonder wachtwoord.
+- Kan de camera zelf zoomen (veel Android-telefoons, zoals de Samsung Fold), dan gebruikt de booth dat; dat is scherper dan digitaal inzoomen. Verschuiven doe je dan door de camera te richten. Op een iPad wordt digitaal ingezoomd: hoe verder je inzoomt, hoe minder scherp.
+
 ## Booth schermvullend, zonder adresbalk (aanrader)
 
 Zet de booth als app op het beginscherm. Hij opent dan altijd schermvullend, zonder adresbalk, ook als het toetsenbord voor de naam verschijnt.
