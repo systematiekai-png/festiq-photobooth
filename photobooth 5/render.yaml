@@ -1,0 +1,18 @@
+# Render Blueprint: zet de photobooth online met HTTPS en blijvende opslag.
+# Let op: blijvende opslag (disk) vereist een betaald Render-plan (Starter).
+services:
+  - type: web
+    name: festiq-photobooth
+    runtime: docker
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false   # je vult dit één keer in bij het aanmaken
+      - key: DATA_DIR
+        value: /data
+    disk:
+      name: photobooth-data
+      mountPath: /data
+      sizeGB: 10
