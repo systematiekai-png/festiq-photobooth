@@ -294,7 +294,7 @@ function paintStatus() {
   $('bCancel').textContent = ['done', 'error'].includes(s) ? '← Terug naar start' : '✕ Annuleren';
   $('bRot').classList.toggle('on', !!st.rot); $('bRot').textContent = st.rot ? '180° (aan)' : '180° draaien';
   $('audioWarn').classList.toggle('on', !!booth && st.audio === false);
-  ['vid', 'jpg'].forEach((id) => { $(id).classList.toggle('mirror', !!st.mirror); $(id).classList.toggle('rot', !!st.rot); });
+  // het live beeld komt al gespiegeld/gedraaid binnen, precies zoals de video: hier niets meer omdraaien
   paintInfo();
 }
 function paintInfo() {

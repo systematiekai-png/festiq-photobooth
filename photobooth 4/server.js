@@ -796,6 +796,19 @@ const pub = path.join(__dirname, 'public');
 app.get('/sw.js', (req, res) => { res.set({ 'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/' }); res.sendFile(path.join(pub, 'sw.js')); });
 app.get('/remote/:slug', (req, res) => res.sendFile(path.join(pub, 'remote.html')));
 app.get('/booth/:slug', (req, res) => res.sendFile(path.join(pub, 'booth.html')));
+// Web-app-manifest per booth: "Toevoegen aan beginscherm" / "App installeren" opent de booth dan schermvullend,
+// zonder adresbalk (iPad en Android).
+app.get('/booth/:slug/manifest.webmanifest', (req, res) => {
+  const e = db.prepare('SELECT name, brand_color FROM events WHERE slug = ?').get(req.params.slug);
+  const slug = encodeURIComponent(req.params.slug);
+  res.type('application/manifest+json').set('Cache-Control', 'no-cache').send(JSON.stringify({
+    name: (e ? e.name : 'Photobooth') + ' – Photobooth', short_name: e ? e.name.slice(0, 20) : 'Photobooth',
+    start_url: `/booth/${slug}?kiosk`, scope: '/', id: `/booth/${slug}`,
+    display: 'fullscreen', display_override: ['fullscreen', 'standalone'], orientation: 'any',
+    background_color: '#14131a', theme_color: (e && e.brand_color) || '#ff2a93',
+    icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' }, { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' }],
+  }));
+});
 app.get('/gallery/:slug', (req, res) => res.sendFile(path.join(pub, 'gallery.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(pub, 'admin.html')));
 app.get('/', (req, res) => res.redirect('/admin'));

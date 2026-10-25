@@ -116,6 +116,17 @@ Foto's, video's, muziek en de database staan op een blijvende schijf (`/data`, 1
 
 Op het dashboard-overzicht staat bij elk evenement met foto's of video's ook een ZIP-knop, en bovenaan de evenementenlijst staat **⬇ Alles downloaden (ZIP)** om alles van alle evenementen in één keer te downloaden (per evenement in een eigen map binnen de ZIP).
 
+## Booth schermvullend, zonder adresbalk (aanrader)
+
+Zet de booth als app op het beginscherm. Hij opent dan altijd schermvullend, zonder adresbalk, ook als het toetsenbord voor de naam verschijnt.
+
+- **iPad (Safari)**: open de boothlink, tik op **Deel** (vierkantje met pijl) > **Zet op beginscherm**. Open de booth voortaan via dat icoon. Vergrendel de iPad eventueel met **Begeleide toegang** (Instellingen > Toegankelijkheid).
+- **Android / Samsung (Chrome)**: open de boothlink, tik op **⋮** > **Toevoegen aan startscherm** of **App installeren**. Open de booth voortaan via dat icoon.
+
+Gebruik je de booth in de browser, dan zet de knop ⛶ hem op volledig scherm. Laat de browser dat los (bijvoorbeeld op de iPad zodra het toetsenbord opent), dan gaat hij bij de volgende tik vanzelf weer schermvullend.
+
+De booth bewaakt zelf de camera: valt die weg (scherm even uit, melding, app gewisseld, camera los), dan start hij hem binnen een paar seconden opnieuw. Hangt een scherm te lang (aftellen, opname, verwerken), dan gaat de booth vanzelf terug naar het startscherm.
+
 ## Belangrijk voor iPad en telefoons
 
 Browsers geven **alleen via HTTPS** (of localhost) toegang tot de camera. Voor een echte iPad-booth moet

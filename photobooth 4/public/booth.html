@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<script>/* manifest per booth (voor "Toevoegen aan beginscherm" / "App installeren": schermvullend zonder adresbalk) */
+(function () { var l = document.createElement('link'); l.rel = 'manifest'; l.href = location.pathname.replace(/\/$/, '') + '/manifest.webmanifest'; document.head.appendChild(l); })();</script>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#fcf8ef">
 <title>Photobooth</title>
@@ -260,7 +264,7 @@ function drawFrameOv() {
   try { drawOutOverlay(x, ow, oh); } catch {}
 }
 addEventListener('resize', () => drawFrameOv());
-cam.addEventListener('resize', () => drawFrameOv());
+cam.addEventListener('resize', () => { drawFrameOv(); if (cam.videoWidth) report({ res: `${cam.videoWidth}x${cam.videoHeight}` }); }); // bijv. telefoon gedraaid
 cam.addEventListener('loadedmetadata', () => drawFrameOv());
 
 /* ---------- resultaat tekenen (ontwerp + filter) ---------- */
@@ -313,7 +317,7 @@ async function startCamera() {
   cam.classList.toggle('mirror', mirror);
   setTimeout(drawFrameOv, 50);
   const tr = stream.getVideoTracks()[0];
-  report({ mirror, cam: tr.label, res: `${s.width}x${s.height}`, fps: Math.round(s.frameRate || 0) });
+  report({ mirror, cam: tr.label, res: `${cam.videoWidth || s.width}x${cam.videoHeight || s.height}`, fps: Math.round(s.frameRate || 0) });
   RM.trackChanged(tr);
   if (params.has('info')) { const t = stream.getVideoTracks()[0]; $('caminfo').textContent = `${t.label} · ${s.width}x${s.height} · ${Math.round(s.frameRate || 0)} fps`; }
 }
@@ -690,6 +694,7 @@ function showError(msg, canRetrySave) {
 }
 
 function goIdle() {
+  $('errmsg').dataset.cam = '';
   cancelFlow = true; clearTimeout(idleTimer); clearTimeout(doneTimer);
   if (nameResolve) { clearTimeout(nameTimer); const r = nameResolve; nameResolve = null; r(); }
   raws = []; resultBlob = null;
@@ -732,7 +737,7 @@ async function boot() {
     const msg = e.message === 'nosupport' || !window.isSecureContext
       ? 'Camera niet beschikbaar. Open deze pagina via HTTPS (of localhost) in een moderne browser.'
       : (e.name === 'NotAllowedError' ? 'Geen toegang tot de camera. Sta cameratoegang toe in je browserinstellingen en probeer het opnieuw.' : 'Camera niet gevonden of niet beschikbaar (' + (e.name || 'fout') + ').');
-    $('errmsg').textContent = msg;
+    $('errmsg').textContent = msg; $('errmsg').dataset.cam = e.name === 'NotAllowedError' || e.message === 'nosupport' ? '' : '1';
     const a = $('btnErrAction'); a.textContent = 'Opnieuw proberen'; a.onclick = () => location.reload(); $('btnErrBack').style.display = 'none';
     return setScreen('error');
   }
@@ -772,7 +777,41 @@ async function warmCache() {
 if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('service worker', e));
 
 async function requestWake() { try { wakeLock = await navigator.wakeLock.request('screen'); } catch {} }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') requestWake(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { requestWake(); setTimeout(checkCamera, 300); } });
+
+/* Camerabewaking: valt de camera weg (scherm even uit, app gewisseld, toetsenbord, melding, USB-camera los),
+   dan start de booth hem zelf opnieuw. Vroeger bleef het beeld dan hangen tot je de booth herlaadde. */
+let lastFrameAt = Date.now(), camRestarting = false, camFails = 0;
+(function frameTick() { lastFrameAt = Date.now(); if (cam.requestVideoFrameCallback) cam.requestVideoFrameCallback(frameTick); })();
+if (!cam.requestVideoFrameCallback) { let lt = -1; setInterval(() => { if (cam.currentTime !== lt) { lt = cam.currentTime; lastFrameAt = Date.now(); } }, 500); }
+async function checkCamera(force) {
+  if (camRestarting || !ev || !ev.active || document.visibilityState !== 'visible') return;
+  const scr = app.dataset.screen;
+  if (!['idle', 'done', 'error', 'review'].includes(scr) && !force) return; // nooit midden in een opname herstarten
+  const tr = stream && stream.getVideoTracks()[0];
+  const dead = !tr || tr.readyState === 'ended' || Date.now() - lastFrameAt > 4000 || cam.paused;
+  if (!dead && !force) return;
+  camRestarting = true;
+  try {
+    if (cam.paused && tr && tr.readyState === 'live') { await cam.play().catch(() => {}); await sleep(800); if (Date.now() - lastFrameAt < 1500) return; }
+    console.warn('Camera herstarten…'); await startCamera(); camFails = 0;
+    if (scr === 'error' && $('errmsg').dataset.cam === '1') goIdle();
+  } catch (e) {
+    camFails++;
+    if (scr !== 'error') { showError('De camera reageert niet. We proberen het automatisch opnieuw…', false); $('errmsg').dataset.cam = '1'; $('btnErrAction').textContent = 'Nu opnieuw proberen'; $('btnErrAction').onclick = () => checkCamera(true); }
+    if (camFails >= 6) location.reload(); // na ~30 s zonder camera: de hele booth opnieuw laden
+  } finally { camRestarting = false; }
+}
+setInterval(() => checkCamera($('errmsg').dataset.cam === '1'), 5000);
+cam.addEventListener('pause', () => setTimeout(() => checkCamera(), 1000));
+
+/* Vastgelopen scherm? Na ruim de tijd vanzelf terug naar het startscherm. */
+let scrSince = Date.now(), scrLast = '';
+setInterval(() => {
+  const s = app.dataset.screen; if (s !== scrLast) { scrLast = s; scrSince = Date.now(); return; }
+  const limit = { count: 60, rec: (ev && ev.video_seconds || 10) + 45, upload: 240 }[s];
+  if (limit && Date.now() - scrSince > limit * 1000) { console.warn('Scherm hing vast:', s); goIdle(); }
+}, 3000);
 
 $('btnStart').onclick = startSession;
 $('btnRot').onclick = () => { rot180 = !rot180; try { localStorage.setItem('pbRot180', rot180 ? '1' : '0'); } catch {} applyRot(); };
@@ -789,7 +828,24 @@ $('btnFlip').onclick = async () => {
     await startCamera();
   } catch { camId = null; camLabel = ''; try { localStorage.removeItem('pbCamId'); localStorage.removeItem('pbCamLabel'); } catch {} startCamera().catch(() => {}); }
 };
-$('btnFull').onclick = () => { const d = document; if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d); else { const e = d.documentElement; (e.requestFullscreen || e.webkitRequestFullscreen || (() => {})).call(e); } };
+/* Volledig scherm. Browsers laten dat soms los (bijv. iPad bij het toetsenbord voor de naam, of na een melding).
+   We onthouden dat je volledig scherm wilde en zetten het bij de eerstvolgende tik vanzelf terug. */
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+const isApp = () => matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone === true;
+let wantFull = false;
+try { wantFull = localStorage.getItem('pbWantFull') === '1'; } catch {}
+function goFull() { const e = document.documentElement; try { const p = (e.requestFullscreen || e.webkitRequestFullscreen || (() => {})).call(e, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => {}); } catch {} }
+$('btnFull').onclick = (ev) => {
+  if (ev) ev.stopPropagation();
+  wantFull = !isFull(); try { localStorage.setItem('pbWantFull', wantFull ? '1' : '0'); } catch {}
+  if (wantFull) goFull(); else (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+};
+document.addEventListener('pointerdown', (e) => {
+  if (!wantFull || isFull() || isApp()) return;
+  if (e.target && (e.target.id === 'guestName' || e.target.closest('#btnFull'))) return; // tijdens typen niet (iPad laat dat niet toe)
+  goFull();
+}, true);
+if (isApp()) $('btnFull').style.display = 'none'; // als app geopend: al schermvullend
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
 /* ---------- afstandsbediening (bijv. telefoon als camera, bediend vanaf de MacBook via /remote/<slug>) ---------- */
@@ -853,12 +909,35 @@ const RM = (() => {
       case 'ping': return post({ ...status, to: m.from });
     }
   }
+  /* Live beeld voor de Mac: we tekenen het camerabeeld op een klein canvas, precies zoals het in de video komt
+     (staand/liggend, gespiegeld en 180° gedraaid zoals de opname). Het ruwe camerabeeld van Android komt op de Mac
+     soms liggend binnen terwijl de video staand is; via dit canvas klopt de richting (en dus het kader) altijd. */
+  const pcv = document.createElement('canvas'); let pctx = null, ptrack = null, pskip = 0;
+  function previewTrack() {
+    if (!ptrack) { pctx = pcv.getContext('2d'); pcv.width = 16; pcv.height = 16; ptrack = pcv.captureStream(30).getVideoTracks()[0]; try { ptrack.contentHint = 'motion'; } catch {} pdraw(); }
+    return ptrack;
+  }
+  function pdraw() {
+    try {
+      const vw = cam.videoWidth, vh = cam.videoHeight;
+      if (vw && pmode !== 'off' && (pcs.size || Date.now() < framesUntil) && !(pmode === 'low' && (pskip++ & 1))) {
+        const max = pmode === 'low' ? 480 : 960, sc = Math.min(1, max / Math.max(vw, vh));
+        const w = Math.round(vw * sc) & ~1, h = Math.round(vh * sc) & ~1;
+        if (pcv.width !== w || pcv.height !== h) { pcv.width = w; pcv.height = h; }
+        pctx.save();
+        if (rot180) { pctx.translate(w, h); pctx.rotate(Math.PI); }
+        drawFiltered(pctx, cam, null, 0, 0, w, h, filter, mirror);
+        pctx.restore();
+      }
+    } catch {}
+    if (cam.requestVideoFrameCallback) cam.requestVideoFrameCallback(pdraw); else setTimeout(pdraw, 40);
+  }
   async function startPeer(rid) {
     if (!rid || !stream) return;
     const old = pcs.get(rid); if (old) old.close();
     const pc = new RTCPeerConnection(ICE); pcs.set(rid, pc);
-    const tr = stream.getVideoTracks()[0];
-    const sender = pc.addTrack(tr, stream);
+    const tr = previewTrack();
+    const sender = pc.addTrack(tr, new MediaStream([tr]));
     await applyPreview(sender); // voorbeeldbeeld hoeft niet in volle kwaliteit: scheelt rekenkracht op de telefoon
     pc.onicecandidate = (e) => { if (e.candidate) post({ type: 'ice', to: rid, candidate: e.candidate }); };
     pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState) && pcs.get(rid) === pc) pcs.delete(rid); };
@@ -871,9 +950,9 @@ const RM = (() => {
   function applyPreview(sender) {
     try {
       const p = sender.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}];
-      const w = (sender.track && sender.track.getSettings().width) || 1280, e = p.encodings[0];
+      const e = p.encodings[0];
       e.active = pmode !== 'off';
-      e.scaleResolutionDownBy = Math.max(1, w / (pmode === 'low' ? 640 : 1280));
+      e.scaleResolutionDownBy = 1; // het canvas is al klein
       e.maxBitrate = pmode === 'low' ? 700_000 : 2_500_000;
       e.maxFramerate = pmode === 'low' ? 15 : 30;
       return sender.setParameters(p).catch(() => {});
@@ -885,19 +964,16 @@ const RM = (() => {
   }
   function trackChanged(tr) {
     if (!pcs.size && remotes) post({ type: 'ready' }); // camera is (opnieuw) gestart: Mac mag verbinding maken
-    pcs.forEach((pc) => pc.getSenders().forEach((s) => { if (s.track && s.track.kind === 'video') s.replaceTrack(tr).catch(() => {}); }));
+    // het live beeld komt van het canvas en volgt de nieuwe camera vanzelf
   }
   // reserve: JPEG-beeldjes via de server als de directe verbinding niet lukt
-  const fc = document.createElement('canvas');
   async function frameLoop() {
     if (framesBusy) return; framesBusy = true;
     try {
       while (Date.now() < framesUntil && token) {
-        if (cam.videoWidth && pmode !== 'off') {
-          const sc = Math.min(1, (pmode === 'low' ? 400 : 640) / cam.videoWidth);
-          fc.width = Math.round(cam.videoWidth * sc); fc.height = Math.round(cam.videoHeight * sc);
-          fc.getContext('2d').drawImage(cam, 0, 0, fc.width, fc.height);
-          const blob = await new Promise((r) => fc.toBlob(r, 'image/jpeg', 0.6));
+        previewTrack();
+        if (cam.videoWidth && pmode !== 'off' && pcv.width > 16) {
+          const blob = await new Promise((r) => pcv.toBlob(r, 'image/jpeg', 0.6)); // zelfde beeld als hierboven
           if (blob) await fetch(`/api/remote/${encodeURIComponent(slug)}/frame`, { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Booth-Token': token }, body: blob }).catch(() => {});
         }
         await sleep(pmode === 'full' ? 70 : 300);
