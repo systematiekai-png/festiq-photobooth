@@ -1,0 +1,20 @@
+{
+  "name": "photobooth-platform",
+  "version": "1.0.0",
+  "description": "Photobooth platform: booth-app (foto, fotostrip, 360° video), dashboard en galerij",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^13.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "multer": "^2.4.0",
+    "qrcode": "^1.5.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

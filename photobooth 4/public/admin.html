@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Festiq Photobooth Dashboard</title>
+<link rel="icon" href="/festiq-logo.jpg">
+<style>
+:root{--bg:#fcf8ef;--panel:#ffffff;--panel2:#f7f0e4;--line:#eadfce;--text:#1c1b22;--muted:#7a7385;--accent:#e6197f;--accent-ink:#fff;--ok:#178a52;--bad:#d92d42;--bar:#ff2a93;
+  --grad:linear-gradient(135deg,#ff2a93,#7c3aed)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:ui-rounded,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",-apple-system,system-ui,sans-serif;font-size:15px}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--grad);color:var(--accent-ink);border:0;border-radius:12px;padding:10px 18px;font-weight:700;box-shadow:0 4px 14px #7c3aed33;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn.sec{background:#fff;color:var(--text);border:1px solid var(--line);box-shadow:none}
+.btn.danger{background:transparent;color:var(--bad);border:1px solid var(--line);box-shadow:none}
+.btn.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+header.top{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;border-bottom:3px solid transparent;border-image:linear-gradient(90deg,#ff2a93,#ffa41c,#7c3aed,#1eb4ff) 1;background:var(--bg);position:sticky;top:0;z-index:5}
+.logo{font-weight:800;font-size:15px;display:flex;gap:12px;align-items:center;text-decoration:none;color:var(--muted)}
+.logo img{height:58px;width:auto;display:block}
+main{max-width:1200px;margin:0 auto;padding:24px}
+h2{margin:0;font-size:22px}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 18px;flex-wrap:wrap}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:14px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.tile .n{font-size:30px;font-weight:900;line-height:1.1}
+.tile:nth-child(1){border-top:4px solid #ff2a93}.tile:nth-child(2){border-top:4px solid #ffa41c}.tile:nth-child(3){border-top:4px solid #7c3aed}.tile:nth-child(4){border-top:4px solid #1eb4ff}
+.tile .l{color:var(--muted);font-size:13px;margin-top:4px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:22px}
+.card h3{margin:0 0 2px;font-size:15px}.card .sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+#chart{position:relative}
+#chart svg{width:100%;height:150px;display:block;overflow:visible}
+#tip{position:absolute;pointer-events:none;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;white-space:nowrap;display:none;transform:translate(-50%,-110%);z-index:3}
+details.tbl{margin-top:8px;font-size:13px;color:var(--muted)}
+details.tbl table{border-collapse:collapse;margin-top:6px}details.tbl td,details.tbl th{padding:3px 14px 3px 0;text-align:left;font-weight:400}
+.events{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+.ev{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.cover{height:150px;background:var(--panel2) center/cover no-repeat;position:relative;display:grid;place-items:center;color:var(--muted);font-size:34px}
+.cover .dot{position:absolute;left:12px;top:12px;width:12px;height:12px;border-radius:50%;border:2px solid #fff8}
+.pill{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.pill.on{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}
+.ev .body{padding:14px 16px;display:flex;flex-direction:column;gap:6px;flex:1}
+.ev h3{margin:0;font-size:17px}.muted{color:var(--muted);font-size:13px}
+.ev .acts{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 16px}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;border:1px dashed var(--line);border-radius:16px}
+/* gallery */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.m{position:relative;background:var(--panel2);border-radius:10px;overflow:hidden;aspect-ratio:1;cursor:pointer}
+.m img,.m video{width:100%;height:100%;object-fit:cover;display:block}
+.m .x{position:absolute;top:6px;right:6px;background:#000b;color:#fff;border:0;border-radius:8px;width:30px;height:30px;opacity:0;transition:.15s}
+.m:hover .x,.m:focus-within .x{opacity:1}
+.m .k.gn{left:auto;right:6px;max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#ff2a93e6;font-weight:700}
+.m .k{position:absolute;left:6px;bottom:6px;background:#000b;color:#fff;font-size:11px;padding:2px 7px;border-radius:999px}
+.linkrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.linkrow input{flex:1;min-width:220px;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px}
+.qrs{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px}
+.qrs figure{margin:0;text-align:center;font-size:12px;color:var(--muted)}.qrs img{width:130px;height:130px;background:#fff;padding:6px;border-radius:10px;display:block;margin-bottom:4px}
+/* modal */
+.modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 12px;z-index:20}
+.modal.show{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;width:100%;max-width:580px}
+.sheet h2{margin-bottom:14px}
+.sheet.wide{max-width:980px}
+.mv{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,1fr);gap:20px;align-items:start}
+@media (max-width:760px){.mv{grid-template-columns:1fr}}
+.mv-media video,.mv-media img{width:100%;max-height:70vh;object-fit:contain;border-radius:12px;background:#111;display:block}
+.mv-side{display:flex;flex-direction:column;gap:10px}
+.mv-qr{background:#fff;border-radius:16px;padding:12px;align-self:flex-start;border:1px solid var(--line)}
+.mv-qr img{display:block;width:220px;height:220px}
+.mv-btns{display:flex;gap:8px;flex-wrap:wrap}
+label.f{display:block;margin-bottom:14px;font-size:13px;color:var(--muted)}
+label.f>span{display:block;margin-bottom:5px}
+.in,select.in{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 12px;font:inherit}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modes{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.modes label{border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;cursor:pointer;background:var(--panel2);font-size:13px;color:var(--muted)}
+.modes label b{display:block;color:var(--text);font-size:14px;margin-bottom:2px}
+.modes input{display:none}.modes label:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.checks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.checks label{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;display:flex;gap:6px;align-items:center;color:var(--text)}
+input[type=color]{width:100%;height:42px;padding:3px;border-radius:10px;background:var(--panel2);border:1px solid var(--line)}
+.foot{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.tog{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}.tog label{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text)}
+
+nav.nav{display:flex;gap:6px;margin-left:24px;flex:1}
+nav.nav a{text-decoration:none;color:var(--muted);padding:7px 13px;border-radius:9px;font-weight:600;font-size:14px}
+nav.nav a.on{background:#fff;color:var(--accent);box-shadow:0 1px 6px #0001}
+.tpls{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.tpl{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.tpl .pv{background:var(--panel2);padding:14px;display:grid;place-items:center;height:330px}
+.tpl canvas{max-width:100%;max-height:100%;border-radius:6px;box-shadow:0 4px 18px #0003}
+.tpl .body{padding:12px 14px 4px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.tpl .acts{padding:8px 14px 14px;display:flex;gap:8px;flex-wrap:wrap}
+.sheet.wide{max-width:1120px}
+.ed{display:grid;grid-template-columns:minmax(240px,340px) 1fr;gap:24px}
+@media(max-width:820px){.ed{grid-template-columns:1fr}}
+.edpv{position:sticky;top:12px;align-self:start}
+.pvwrap{position:relative;line-height:0;border-radius:8px;overflow:hidden;box-shadow:0 4px 20px #0003;background:var(--panel2);display:inline-block;max-width:100%}
+.pvwrap canvas{width:auto;height:auto;max-width:100%;max-height:68vh;display:block}
+#txtColor{width:52px;height:34px;flex:none}
+#stks{position:absolute;inset:0}
+.stk{position:absolute;cursor:grab;touch-action:none;user-select:none}
+.stk img{width:100%;display:block;pointer-events:none;-webkit-user-drag:none}
+.stk.sel{outline:2px dashed var(--accent);outline-offset:3px}
+.stk:active{cursor:grabbing}
+.fin{margin-top:14px}.fin canvas{width:auto;height:auto;max-width:100%;max-height:34vh;display:block;border-radius:8px;margin-top:6px;box-shadow:0 4px 18px #0003}
+.edctl h4{margin:18px 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.edctl h4:first-child{margin-top:0}
+.rng{display:grid;grid-template-columns:150px 1fr 44px;gap:10px;align-items:center;margin-bottom:8px;font-size:13px;color:var(--muted)}
+.rng input{width:100%}.rng b{color:var(--text);font-weight:600;text-align:right}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px}
+.lib .it{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:10px;aspect-ratio:1;cursor:pointer;display:grid;place-items:center;padding:5px}
+.lib .it:hover{border-color:var(--accent)}
+.lib .it img{max-width:100%;max-height:100%;display:block}
+.lib .it button{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:var(--bad);color:#fff;font-size:12px;line-height:1;display:none}
+.lib .it:hover button{display:block}
+.selbox{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text);margin-bottom:10px}
+/* login */
+.login{max-width:380px;margin:12vh auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px}
+.login h2{margin-bottom:6px}.err{color:var(--bad);font-size:13px;min-height:18px;margin-bottom:8px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;display:none;z-index:50}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast"></div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script src="/render.js"></script>
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const root = $('#root');
+const FILTER_LABELS = { none: 'Normaal', bw: 'Zwart-wit', sepia: 'Sepia', vintage: 'Vintage', vivid: 'Levendig', warm: 'Warm', cool: 'Koel', glow: 'Glow' };
+const MODE_LABELS = { photo: 'iPad-booth (fotostrip)', strip: 'iPad-booth (fotostrip)', video: '360° video' };
+let events = [];
+
+async function api(path, opts = {}) {
+  const r = await fetch('/api' + path, { credentials: 'same-origin', ...opts, headers: { ...(opts.body ? { 'Content-Type': 'application/json' } : {}), ...(opts.headers || {}) }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+  if (r.status === 401 && path !== '/login') { showLogin(); throw new Error('login'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Er ging iets mis');
+  return j;
+}
+function toast(t) { const el = $('#toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 2400); }
+const fmtBytes = (n) => n > 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.round(n / 1e3) + ' KB';
+const fmtDate = (d) => d ? new Date(d + 'T12:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Geen datum';
+let origin = location.origin; // wordt het tunneladres als dat bekend is (zie /api/public-url)
+fetch('/api/public-url').then((r) => r.json()).then((j) => { if (j.url) origin = j.url; }).catch(() => {});
+
+/* ---------- login ---------- */
+function showLogin() {
+  root.innerHTML = `<form class="login" id="lf"><img src="/festiq-wordmark.jpg" alt="Festiq" style="width:100%;height:auto;mix-blend-mode:multiply;margin-bottom:6px"><div class="muted" style="margin-bottom:18px;text-align:center">Log in op het dashboard</div>
+    <label class="f"><span>Wachtwoord</span><input class="in" type="password" id="pw" autofocus autocomplete="current-password"></label>
+    <div class="err" id="lerr"></div><button class="btn" style="width:100%;justify-content:center">Inloggen</button></form>`;
+  $('#lf').onsubmit = async (e) => {
+    e.preventDefault();
+    try { await api('/login', { method: 'POST', body: { password: $('#pw').value } }); route(); }
+    catch (err) { $('#lerr').textContent = err.message; }
+  };
+}
+function shell(inner) {
+  root.innerHTML = `<header class="top"><a class="logo" href="#/"><img src="/festiq-wordmark.jpg" alt="Festiq"><span>Dashboard</span></a><nav class="nav"><a href="#/" class="${/^#\/(templates|video)/.test(location.hash) ? '' : 'on'}">Overzicht</a><a href="#/templates" class="${location.hash.startsWith('#/templates') ? 'on' : ''}">Ontwerpen</a><a href="#/video" class="${location.hash.startsWith('#/video') ? 'on' : ''}">360° extra's</a></nav><button class="btn sec sm" id="lo">Uitloggen</button></header><main>${inner}</main>`;
+  $('#lo').onclick = async () => { await api('/logout', { method: 'POST' }); showLogin(); };
+}
+
+/* ---------- dashboard ---------- */
+async function dashboard() {
+  const [stats, list] = await Promise.all([api('/stats'), api('/events')]);
+  events = list;
+  shell(`
+    <div class="bar"><h2>Overzicht</h2><button class="btn" id="new">+ Nieuw evenement</button></div>
+    <div class="tiles">
+      <div class="tile"><div class="n">${stats.active_events}<span class="muted"> / ${stats.events}</span></div><div class="l">Actieve evenementen</div></div>
+      <div class="tile"><div class="n">${stats.photos}</div><div class="l">Foto's gemaakt</div></div>
+      <div class="tile"><div class="n">${stats.videos}</div><div class="l">360°-video's</div></div>
+      <div class="tile"><div class="n">${fmtBytes(stats.bytes)}</div><div class="l">Opslag in gebruik</div></div>
+    </div>
+    <div class="card"><h3>Foto's en video's per dag</h3><div class="sub">Laatste 14 dagen</div><div id="chart"></div></div>
+    <div class="bar"><h2>Evenementen</h2>${list.some((e) => e.media_count) ? `<a class="btn sec sm" href="/api/events/zip">⬇ Alles downloaden (ZIP)</a>` : ''}</div>
+    ${list.length ? `<div class="events">${list.map(evCard).join('')}</div>` : `<div class="empty">Nog geen evenementen.<br><br><button class="btn" id="new2">+ Maak je eerste evenement</button></div>`}
+  `);
+  chart(stats.perDay);
+  $('#new').onclick = () => editEvent();
+  if ($('#new2')) $('#new2').onclick = () => editEvent();
+  root.querySelectorAll('[data-act]').forEach((b) => b.onclick = () => cardAction(b.dataset.act, +b.dataset.id));
+}
+function evCard(e) {
+  return `<div class="ev">
+    <div class="cover" ${e.cover ? `style="background-image:url('/media/${esc(e.cover)}')"` : ''}>${e.cover ? '' : '📷'}<span class="dot" style="background:${esc(e.brand_color)}"></span></div>
+    <div class="body">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${esc(e.name)}</h3><span class="pill ${e.active ? 'on' : ''}">${e.active ? 'Actief' : 'Inactief'}</span></div>
+      <div class="muted">${esc(fmtDate(e.date))}${e.location ? ' · ' + esc(e.location) : ''}</div>
+      <div class="muted">${esc(MODE_LABELS[e.mode])} · ${e.media_count} ${e.media_count === 1 ? 'item' : 'items'}</div>
+    </div>
+    <div class="acts">
+      <a class="btn sm" href="/booth/${esc(e.slug)}" target="_blank">Open photobooth</a>
+      <a class="btn sec sm" href="/remote/${esc(e.slug)}" target="_blank" title="Telefoon als camera, bedienen vanaf deze computer">🎛 Bediening</a>
+      <a class="btn sec sm" href="#/event/${e.id}">Galerij</a>
+      ${e.media_count ? `<a class="btn sec sm" href="/api/events/${e.id}/zip">⬇ ZIP</a>` : ''}
+      <button class="btn sec sm" data-act="edit" data-id="${e.id}">Bewerken</button>
+    </div></div>`;
+}
+function cardAction(act, id) { if (act === 'edit') editEvent(events.find((e) => e.id === id)); }
+
+function chart(perDay) {
+  const days = [];
+  for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d.toISOString().slice(0, 10)); }
+  const map = Object.fromEntries(perDay.map((r) => [r.day, r.n]));
+  const vals = days.map((d) => map[d] || 0);
+  const max = Math.max(4, ...vals), W = 1000, H = 150, bw = W / 14, gap = 10, top = 10, bot = 24;
+  const ch = H - top - bot;
+  const total = vals.reduce((a, b) => a + b, 0);
+  const bars = vals.map((v, i) => {
+    const h = v ? Math.max(3, v / max * ch) : 0, x = i * bw + gap / 2, y = top + ch - h, w = bw - gap, r = Math.min(4, h);
+    return `<g data-i="${i}"><rect x="${i * bw}" y="0" width="${bw}" height="${H}" fill="transparent"/>
+      ${h ? `<path d="M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z" fill="var(--bar)"/>` : ''}
+      ${i % 2 === 1 || i === 0 ? '' : ''}<text x="${x + w / 2}" y="${H - 6}" text-anchor="middle" font-size="16" fill="var(--muted)">${days[i].slice(8)}</text></g>`;
+  }).join('');
+  const grid = [0, .5, 1].map((f) => `<line x1="0" x2="${W}" y1="${top + ch - f * ch}" y2="${top + ch - f * ch}" stroke="var(--line)" stroke-width="1" ${f ? 'stroke-dasharray="4 6"' : ''}/>`).join('');
+  $('#chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Aantal items per dag, laatste 14 dagen, totaal ${total}">${grid}${bars}</svg><div id="tip"></div>
+    <details class="tbl"><summary>Bekijk als tabel</summary><table><tr><th>Dag</th><th>Aantal</th></tr>${days.map((d, i) => `<tr><td>${d}</td><td>${vals[i]}</td></tr>`).join('')}</table></details>`;
+  const tip = $('#tip'), box = $('#chart');
+  $('#chart svg').addEventListener('mousemove', (e) => {
+    const g = e.target.closest('g[data-i]'); if (!g) { tip.style.display = 'none'; return; }
+    const i = +g.dataset.i, rb = box.getBoundingClientRect(), gb = g.getBoundingClientRect();
+    tip.style.display = 'block'; tip.style.left = (gb.left + gb.width / 2 - rb.left) + 'px'; tip.style.top = (gb.top - rb.top + 40) + 'px';
+    tip.textContent = `${fmtDate(days[i])}: ${vals[i]}`;
+  });
+  $('#chart svg').addEventListener('mouseleave', () => tip.style.display = 'none');
+}
+
+/* ---------- event form ---------- */
+let resumeDraft = false;
+function formBody(form) {
+  const f = new FormData(form);
+  return {
+    name: f.get('name'), date: f.get('date'), location: f.get('location'), mode: f.get('mode'), brand_color: f.get('brand_color'),
+    welcome_text: f.get('welcome_text'), footer_text: f.get('footer_text'), countdown: f.get('countdown'), video_seconds: f.get('video_seconds'),
+    gallery_public: f.get('gallery_public') ? 1 : 0, active: f.get('active') ? 1 : 0,
+    templates: f.get('template') || 'b_brand', strip_shots: f.get('strip_shots'),
+    music_id: f.get('music_id') || '', video_frame: f.get('video_frame') || '', slowmo: f.get('slowmo') ? 1 : 0, ask_name: f.get('ask_name') ? 1 : 0,
+  };
+}
+async function editEvent(e) {
+  const isNew = !e;
+  let draft = null;
+  if (resumeDraft) { try { const r = JSON.parse(sessionStorage.getItem('pbReturn') || 'null'); if (r && (r.id || null) === (e ? e.id : null)) draft = r.draft; } catch {} }
+  resumeDraft = false; try { sessionStorage.removeItem('pbReturn'); } catch {}
+  const [tp, musicList, frameList] = await Promise.all([api('/templates'), api('/music'), api('/frames')]);
+  const allT = tp.builtin.concat(tp.custom);
+  e = e || { name: '', date: new Date().toISOString().slice(0, 10), location: '', mode: 'strip', brand_color: '#ff2a93', welcome_text: 'Tik om te starten', footer_text: '', filters: Object.keys(FILTER_LABELS).join(','), countdown: 3, video_seconds: 8, gallery_public: 1, active: 1, templates: 'b_brand', strip_shots: 3, music_id: '', video_frame: '', slowmo: 1, ask_name: 1 };
+  if (draft) e = { ...e, ...draft };
+  const etl = String(e.templates || 'b_brand').split(',');
+  $('#sheet').className = 'sheet';
+  $('#sheet').innerHTML = `<h2>${isNew ? 'Nieuw evenement' : 'Evenement bewerken'}</h2>
+    <form id="ef">
+      <label class="f"><span>Naam van het evenement *</span><input class="in" name="name" required maxlength="100" value="${esc(e.name)}" placeholder="Bruiloft Lisa & Tom"></label>
+      <div class="two"><label class="f"><span>Datum</span><input class="in" type="date" name="date" value="${esc(e.date)}"></label>
+      <label class="f"><span>Locatie</span><input class="in" name="location" maxlength="100" value="${esc(e.location)}"></label></div>
+      <div class="muted" style="margin-bottom:6px">Type photobooth</div>
+      <div class="modes">${Object.entries({ strip: ['iPad-booth', 'Fotostrip van 2 tot 4 foto\'s'], video: ['360° booth', 'Video-opname'] }).map(([k, [a, b]]) =>
+        `<label><input type="radio" name="mode" value="${k}" ${e.mode === k ? 'checked' : ''}><b>${a}</b>${b}</label>`).join('')}</div>
+      <div class="two"><label class="f"><span>Huisstijlkleur</span><input type="color" name="brand_color" value="${esc(e.brand_color)}"></label>
+      <label class="f"><span>Aftellen (seconden)</span><input class="in" type="number" name="countdown" min="1" max="10" value="${e.countdown}"></label></div>
+      <label class="f"><span>Welkomsttekst</span><input class="in" name="welcome_text" maxlength="80" value="${esc(e.welcome_text)}"></label>
+      <label class="f"><span>Tekst onderaan de foto (optioneel)</span><input class="in" name="footer_text" maxlength="80" value="${esc(e.footer_text)}" placeholder="Bijv. #lisaentom2026"></label>
+      <div id="vsec">
+      <label class="f"><span>Lengte 360°-video (seconden)</span><input class="in" type="number" name="video_seconds" min="3" max="30" value="${e.video_seconds}"></label>
+      <div class="tog" style="margin-bottom:14px"><label><input type="checkbox" name="slowmo" ${e.slowmo ? 'checked' : ''}> Automatische slow-motion op het meest bewegende moment</label></div>
+      <label class="f"><span>Muziek onder de video (één nummer voor het hele evenement)</span><select class="in" name="music_id"><option value="">Geen muziek</option>${musicList.map((m) => `<option value="${esc(m.id)}" ${e.music_id === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></label>
+      <label class="f"><span>Videokader / filmstrip (over de video heen)</span><select class="in" name="video_frame"><option value="">Geen kader (alleen naambalk)</option>${Object.entries(PB.VIDEO_FRAME_LABELS).map(([k, l]) => `<option value="${k}" ${e.video_frame === k ? 'selected' : ''}>${l} (ingebouwd)</option>`).join('')}${frameList.map((f) => `<option value="${esc(f.id)}" ${e.video_frame === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select></label>
+      <div class="muted" style="margin:-6px 0 14px"><a href="#/video" id="vidLink">Muziek en kaders uploaden →</a></div></div>
+      <div id="tsec"><div class="tog" style="margin-bottom:14px"><label><input type="checkbox" name="ask_name" ${e.ask_name ? 'checked' : ''}> Gasten vragen hun naam in te vullen na het voorbeeld (de naam wordt bij de fotostrip opgeslagen)</label></div><div class="muted" style="margin-bottom:6px">Ontwerp van de foto's / fotostrip (vast voor dit evenement)</div>
+      <div class="checks">${allT.map((t) => `<label><input type="radio" name="template" value="${esc(t.id)}" data-shots="${t.kind === 'image' ? t.windows.length : ''}" ${(etl[0] || 'b_brand') === t.id ? 'checked' : ''}> <i style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${esc(t.frame_color === 'brand' ? e.brand_color : t.frame_color)};border:1px solid #8886"></i> ${esc(t.name)}${t.kind === 'image' ? ` (${t.windows.length} foto's)` : ''}</label>`).join('')}</div>
+      <div class="muted" style="margin:-6px 0 14px"><a href="#/templates" id="tplLink">Ontwerpen bekijken of zelf maken →</a></div></div>
+      <label class="f" id="ssec"><span>Aantal foto's in de fotostrip</span><select class="in" name="strip_shots">${[2, 3, 4].map((n) => `<option ${Number(e.strip_shots) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+      <div class="tog"><label><input type="checkbox" name="gallery_public" ${e.gallery_public ? 'checked' : ''}> Publieke galerij voor gasten</label>
+      <label><input type="checkbox" name="active" ${e.active ? 'checked' : ''}> Actief</label></div>
+      <div class="err" id="eerr"></div>
+      <div class="foot">${isNew ? '' : '<button type="button" class="btn danger" id="del" style="margin-right:auto">Verwijderen</button>'}<button type="button" class="btn sec" id="cancel">Annuleren</button><button class="btn">Opslaan</button></div>
+    </form>`;
+  $('#modal').classList.add('show');
+  const sync = () => { const m = $('[name=mode]:checked').value; $('#vsec').style.display = m === 'video' ? '' : 'none'; const tr = $('[name=template]:checked'); const fixed = tr && tr.dataset.shots; $('#ssec').style.display = m === 'strip' && !fixed ? '' : 'none'; $('#tsec').style.display = m === 'video' ? 'none' : ''; };
+  const remember = () => { try { sessionStorage.setItem('pbReturn', JSON.stringify({ id: isNew ? null : e.id, name: $('#ef [name=name]').value, draft: formBody($('#ef')) })); } catch {} closeModal(); };
+  $('#tplLink').onclick = remember; $('#vidLink').onclick = remember;
+  document.querySelectorAll('[name=mode],[name=template]').forEach((r) => r.onchange = sync); sync();
+  $('#cancel').onclick = closeModal;
+  if (!isNew) $('#del').onclick = async () => {
+    if (!confirm(`"${e.name}" en alle ${e.media_count || 0} bijbehorende foto's/video's definitief verwijderen?`)) return;
+    await api('/events/' + e.id, { method: 'DELETE' }); closeModal(); toast('Evenement verwijderd'); location.hash = '#/'; route();
+  };
+  $('#ef').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const body = formBody(ev.target);
+    try {
+      await api(isNew ? '/events' : '/events/' + e.id, { method: isNew ? 'POST' : 'PUT', body });
+      closeModal(); toast('Opgeslagen'); route();
+    } catch (err) { $('#eerr').textContent = err.message; }
+  };
+}
+/* foto/video uit de galerij openen, met QR-code zodat een gast hem alsnog kan downloaden */
+function openMedia(m, e) {
+  if (!m) return;
+  const link = `${origin}/p/${m.id}`, file = `/media/${m.filename}`, isVideo = m.kind === 'video';
+  const when = new Date(m.created_at.replace(' ', 'T') + 'Z').toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('#sheet').innerHTML = `
+    <div class="mv">
+      <div class="mv-media">${isVideo ? `<video src="${esc(file)}" controls autoplay muted loop playsinline></video>` : `<img src="${esc(file)}" alt="">`}</div>
+      <div class="mv-side">
+        <h2 style="margin:0">${m.guest_name ? esc(m.guest_name) : (isVideo ? '360° video' : 'Fotostrip')}</h2>
+        <div class="muted">${esc(e.name)} · ${esc(when)}${m.guest_name ? ' · ' + (isVideo ? '360° video' : 'fotostrip') : ''}</div>
+        <div class="mv-qr"><img src="/api/qr?text=${encodeURIComponent(link)}&fg=%235b21b6" alt="QR-code"></div>
+        <div class="muted" style="font-size:13px">Laat de gast deze QR-code scannen om ${isVideo ? 'de video' : 'de fotostrip'} op zijn telefoon te downloaden.</div>
+        <input class="in" readonly value="${esc(link)}" style="font-size:12px">
+        <div class="mv-btns">
+          <button class="btn sec sm" id="mvCopy">Kopieer link</button>
+          <a class="btn sec sm" href="${esc(link)}" target="_blank">Downloadpagina</a>
+          <a class="btn sec sm" href="${esc(file)}?dl" download>⬇ Download</a>
+          <button class="btn sm" id="mvClose" style="margin-left:auto">Sluiten</button>
+        </div>
+      </div>
+    </div>`;
+  $('#modal').classList.add('show'); $('#sheet').classList.add('wide');
+  $('#mvClose').onclick = closeModal;
+  $('#mvCopy').onclick = () => navigator.clipboard.writeText(link).then(() => toast('Link gekopieerd'));
+}
+function closeModal() { $('#modal').classList.remove('show'); $('#sheet').classList.remove('wide'); const v = $('#sheet video'); if (v) v.pause(); }
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && $('#modal').classList.contains('show')) closeModal(); });
+$('#modal').addEventListener('mousedown', (e) => { if (e.target.id === 'modal') closeModal(); });
+
+/* ---------- event detail ---------- */
+async function eventPage(id) {
+  const list = await api('/events'); events = list;
+  const e = list.find((x) => x.id === id);
+  if (!e) { location.hash = '#/'; return; }
+  const media = await api(`/events/${id}/media`);
+  const boothUrl = `${origin}/booth/${e.slug}`, galUrl = `${origin}/gallery/${e.slug}`;
+  shell(`
+    <div class="bar"><div><a href="#/" class="muted" style="text-decoration:none">← Alle evenementen</a><h2 style="margin-top:4px">${esc(e.name)} <span class="pill ${e.active ? 'on' : ''}">${e.active ? 'Actief' : 'Inactief'}</span></h2>
+      <div class="muted">${esc(fmtDate(e.date))}${e.location ? ' · ' + esc(e.location) : ''} · ${esc(MODE_LABELS[e.mode])}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="edit">Bewerken</button>
+      <a class="btn sec" href="/api/events/${id}/csv">CSV</a><a class="btn" href="/api/events/${id}/zip">⬇ Alles downloaden (ZIP)</a></div></div>
+    <div class="card"><h3>Links</h3><div class="sub">Open de booth op de iPad of laptop (HTTPS is nodig voor de camera).</div>
+      <div class="linkrow" style="margin-bottom:8px"><span class="muted" style="width:80px">Photobooth</span><input readonly value="${esc(boothUrl)}"><button class="btn sec sm" data-copy="${esc(boothUrl)}">Kopieer</button><a class="btn sm" target="_blank" href="/booth/${esc(e.slug)}">Openen</a><a class="btn sec sm" target="_blank" href="/booth/${esc(e.slug)}?kiosk">Kioskmodus</a></div>
+      <div class="linkrow" style="margin-bottom:8px"><span class="muted" style="width:80px">Bediening</span><input readonly value="${esc(origin + '/remote/' + e.slug)}"><button class="btn sec sm" data-copy="${esc(origin + '/remote/' + e.slug)}">Kopieer</button><a class="btn sm" target="_blank" href="/remote/${esc(e.slug)}">Openen</a><span class="muted" style="font-size:13px">Telefoon als camera: open de booth op de telefoon en bedien hem hier met live beeld</span></div>
+      <div class="linkrow"><span class="muted" style="width:80px">Galerij</span><input readonly value="${esc(galUrl)}"><button class="btn sec sm" data-copy="${esc(galUrl)}">Kopieer</button><a class="btn sm" target="_blank" href="/gallery/${esc(e.slug)}">Openen</a><a class="btn sec sm" target="_blank" href="/gallery/${esc(e.slug)}?slideshow">Diashow</a></div>
+      <div class="qrs"><figure><img src="/api/qr?text=${encodeURIComponent(galUrl)}" alt="QR galerij">QR galerij (voor gasten)</figure><figure><img src="/api/qr?text=${encodeURIComponent(boothUrl)}" alt="QR booth">QR photobooth</figure></div></div>
+    <div class="bar"><h2>${media.length} ${media.length === 1 ? 'item' : 'items'}</h2><button class="btn sec sm" id="refresh">↻ Vernieuwen</button></div>
+    ${media.length ? `<div class="grid">${media.map((m) => `<div class="m" data-open="${m.id}">
+        ${m.kind === 'video' ? `<video src="/media/${esc(m.filename)}" muted loop playsinline preload="metadata"></video><span class="k">360° video</span>` : `<img src="/media/${esc(m.filename)}" loading="lazy" alt="">`}${m.guest_name ? `<span class="k gn" title="Naam van de gast">${esc(m.guest_name)}</span>` : ''}
+        <button class="x" data-del="${m.id}" title="Verwijderen" aria-label="Verwijderen">🗑</button></div>`).join('')}</div>` : '<div class="empty">Nog geen foto\'s gemaakt. Open de photobooth en maak de eerste!</div>'}
+  `);
+  $('#edit').onclick = () => editEvent(e);
+  if (/\/edit$/.test(location.hash)) { history.replaceState(null, '', '#/event/' + id); editEvent(e); }
+  $('#refresh').onclick = route;
+  root.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => navigator.clipboard.writeText(b.dataset.copy).then(() => toast('Link gekopieerd')));
+  root.querySelectorAll('[data-del]').forEach((b) => b.onclick = async (ev) => {
+    ev.stopPropagation();
+    if (!confirm('Deze foto/video verwijderen?')) return;
+    await api('/media/' + b.dataset.del, { method: 'DELETE' }); toast('Verwijderd'); route();
+  });
+  root.querySelectorAll('[data-open]').forEach((el) => {
+    el.onclick = () => openMedia(media.find((m) => m.id === el.dataset.open), e);
+    const v = el.querySelector('video'); if (v) { el.onmouseenter = () => v.play(); el.onmouseleave = () => v.pause(); }
+  });
+}
+
+/* ---------- ontwerpen ---------- */
+const INFO = { name: 'Naam van je evenement', footer: '#hashtag', brand: '#ff2a93' };
+const TPL_DEFAULT = { frame_color: '#ffffff', bg_color: '#f1f1f7', bg_color2: '#e2e0f0', style: 'plain', aspect: '4:3', photo_radius: 0, frame_radius: 0, tilt: 0, caption: '', show_footer: true, text_color: 'auto', filter: 'none', stickers: [] };
+let sampleCache = null;
+const samples = () => sampleCache || (sampleCache = [0, 1, 2, 3].map(PB.sampleShot));
+
+async function templatesPage() {
+  const tp = await api('/templates');
+  const all = tp.custom.concat(tp.builtin);
+  shell(`${backToEventBtn()}<div class="bar"><div><h2>Ontwerpen</h2><div class="muted">Kaders voor je foto's en fotostrips: kleuren, filmstrip, stickers en meer. Je kiest bij elk evenement welk ontwerp gebruikt wordt; gasten kiezen dit niet zelf.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec" id="upTpl">⬆ Eigen fotostrip uploaden</button><button class="btn" id="newTpl">+ Nieuw ontwerp</button></div></div>
+    <div class="tpls">${all.map((t) => `<div class="tpl"><div class="pv"><canvas data-t="${esc(t.id)}"></canvas></div>
+      <div class="body"><b>${esc(t.name)}</b><span class="pill">${t.builtin ? 'Ingebouwd' : t.kind === 'image' ? 'Eigen afbeelding' : 'Eigen'}</span></div>
+      <div class="acts">${t.builtin ? `<button class="btn sec sm" data-copy="${esc(t.id)}">Kopie maken en aanpassen</button>` :
+        `${t.kind === 'image' ? `<button class="btn sm" data-rename="${esc(t.id)}">Naam wijzigen</button>` : `<button class="btn sm" data-edit="${esc(t.id)}">Bewerken</button>`}<button class="btn danger sm" data-del="${esc(t.id)}">Verwijderen</button>`}</div></div>`).join('')}</div>`);
+  wireBackToEvent();
+  $('#newTpl').onclick = () => editTemplate(null);
+  $('#upTpl').onclick = () => uploadStripSheet();
+  root.querySelectorAll('[data-rename]').forEach((b) => b.onclick = async () => {
+    const t = all.find((x) => x.id === b.dataset.rename);
+    const name = prompt('Nieuwe naam voor dit ontwerp', t.name); if (!name || !name.trim()) return;
+    await api('/templates/' + t.id, { method: 'PUT', body: { name: name.trim(), data: {} } }); toast('Naam gewijzigd'); route();
+  });
+  root.querySelectorAll('[data-edit]').forEach((b) => b.onclick = () => editTemplate(all.find((t) => t.id === b.dataset.edit)));
+  root.querySelectorAll('[data-copy]').forEach((b) => b.onclick = () => editTemplate(all.find((t) => t.id === b.dataset.copy)));
+  root.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => {
+    const t = all.find((x) => x.id === b.dataset.del);
+    if (!confirm(`Ontwerp "${t.name}" verwijderen? Het wordt ook uit alle evenementen gehaald.`)) return;
+    await api('/templates/' + t.id, { method: 'DELETE' }); toast('Verwijderd'); route();
+  });
+  await PB.preload(all);
+  root.querySelectorAll('canvas[data-t]').forEach((cv) => {
+    const t = all.find((x) => x.id === cv.dataset.t);
+    const out = PB.renderStrip(samples().slice(0, 3), t, INFO, 'none');
+    const k = Math.min(1, 300 / out.height);
+    cv.width = Math.round(out.width * k); cv.height = Math.round(out.height * k);
+    cv.getContext('2d').drawImage(out, 0, 0, cv.width, cv.height);
+  });
+}
+
+/* ---------- eigen fotostrip-afbeelding uploaden ---------- */
+function detectWindows(img) {
+  const k = Math.min(1, 900 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * k)), h = Math.max(1, Math.round(img.naturalHeight * k));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data;
+  const seen = new Uint8Array(w * h), out = [];
+  const stack = new Int32Array(w * h);
+  for (let start = 0; start < w * h; start++) {
+    if (seen[start] || d[start * 4 + 3] >= 40) continue;
+    let sp = 0, minx = w, miny = h, maxx = 0, maxy = 0, area = 0;
+    stack[sp++] = start; seen[start] = 1;
+    while (sp) {
+      const p = stack[--sp], px = p % w, py = (p / w) | 0; area++;
+      if (px < minx) minx = px; if (px > maxx) maxx = px; if (py < miny) miny = py; if (py > maxy) maxy = py;
+      if (px > 0) { const q = p - 1; if (!seen[q] && d[q * 4 + 3] < 40) { seen[q] = 1; stack[sp++] = q; } }
+      if (px < w - 1) { const q = p + 1; if (!seen[q] && d[q * 4 + 3] < 40) { seen[q] = 1; stack[sp++] = q; } }
+      if (py > 0) { const q = p - w; if (!seen[q] && d[q * 4 + 3] < 40) { seen[q] = 1; stack[sp++] = q; } }
+      if (py < h - 1) { const q = p + w; if (!seen[q] && d[q * 4 + 3] < 40) { seen[q] = 1; stack[sp++] = q; } }
+    }
+    const bw = maxx - minx + 1, bh = maxy - miny + 1;
+    if (area < w * h * 0.006 || bw < w * 0.05 || bh < h * 0.03) continue;   // ruis
+    if (bw >= w * 0.97 && bh >= h * 0.97) continue;                          // transparante buitenrand
+    out.push({ x: minx / w, y: miny / h, w: bw / w, h: bh / h });
+  }
+  out.sort((a, b) => (Math.abs(a.y - b.y) < 0.02 ? a.x - b.x : a.y - b.y));
+  return out.slice(0, 8);
+}
+function downloadStripExample() {
+  const W = 600, H = 1800, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#ff2a93'); g.addColorStop(.4, '#ffa41c'); g.addColorStop(.75, '#7c3aed'); g.addColorStop(1, '#1eb4ff');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const pw = 500, ph = 375, gap = 40, top = 60;
+  x.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 3; i++) { const px = 50, py = top + i * (ph + gap); x.beginPath(); x.roundRect(px, py, pw, ph, 18); x.fill(); }
+  x.globalCompositeOperation = 'source-over';
+  x.fillStyle = '#fff'; x.font = '800 44px sans-serif'; x.textAlign = 'center'; x.fillText('Jouw evenement', W / 2, H - 90);
+  c.toBlob((b) => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'fotostrip-voorbeeld.png'; a.click(); }, 'image/png');
+}
+async function uploadStripSheet() {
+  $('#sheet').className = 'sheet';
+  $('#sheet').innerHTML = `<h2>Eigen fotostrip uploaden</h2>
+    <div class="muted" style="margin-bottom:12px">Upload een PNG of WebP van je fotostrip waarin de plekken voor de foto's <b>transparant</b> (uitgeknipt) zijn. De booth zet de foto's van de gast op die plekken en legt jouw afbeelding erbovenop. Het aantal foto's volgt vanzelf uit het aantal transparante vensters (1 tot 8). <a href="#" id="exDl">Voorbeeldbestand downloaden</a></div>
+    <label class="f"><span>Afbeelding (PNG of WebP, max. 10 MB)</span><input class="in" type="file" id="stripFile" accept="image/png,image/webp"></label>
+    <label class="f"><span>Naam</span><input class="in" id="stripName" maxlength="40" value="Mijn fotostrip"></label>
+    <div id="stripPrev" style="display:none;text-align:center;margin:8px 0"><canvas id="stripCv" style="max-width:100%;max-height:340px;border-radius:8px;box-shadow:0 4px 18px #0003"></canvas></div>
+    <div id="stripInfo" class="muted" style="margin-bottom:8px"></div>
+    <div class="err" id="eerr"></div>
+    <div class="foot"><button type="button" class="btn sec" id="cancel">Annuleren</button><button class="btn" id="stripSave" disabled>Opslaan</button></div>`;
+  $('#modal').classList.add('show');
+  $('#cancel').onclick = closeModal;
+  $('#exDl').onclick = (e) => { e.preventDefault(); downloadStripExample(); };
+  let file = null, wins = [], dims = null;
+  $('#stripFile').onchange = async (e) => {
+    file = e.target.files[0]; wins = []; $('#stripSave').disabled = true; $('#eerr').textContent = ''; $('#stripPrev').style.display = 'none';
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { $('#eerr').textContent = 'Dit bestand is groter dan 10 MB.'; return; }
+    const url = URL.createObjectURL(file);
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+      dims = { w: img.naturalWidth, h: img.naturalHeight };
+      wins = detectWindows(img);
+      if (!wins.length) { $('#stripInfo').textContent = ''; $('#eerr').textContent = "Ik zie geen transparante vensters voor de foto's. Sla je ontwerp op als PNG met uitgeknipte (transparante) plekken, of download het voorbeeldbestand."; return; }
+      await PB.loadOverlay(url);
+      const out = PB.renderStrip(samples().slice(0, Math.min(4, Math.max(wins.length, 1))), { kind: 'image', image_url: url, windows: wins, image_w: dims.w, image_h: dims.h, bg_color: '#ffffff' }, INFO, 'none');
+      const cv = $('#stripCv'); cv.width = Math.min(out.width, 600); cv.height = Math.round(out.height * cv.width / out.width);
+      cv.getContext('2d').drawImage(out, 0, 0, cv.width, cv.height);
+      $('#stripPrev').style.display = 'block';
+      $('#stripInfo').textContent = `Gevonden: ${wins.length} ${wins.length === 1 ? 'venster' : "vensters"}, dus een fotostrip van ${wins.length} ${wins.length === 1 ? 'foto' : "foto's"}. Zo ziet het eruit met voorbeeldfoto's.`;
+      $('#stripSave').disabled = false;
+    } catch { $('#eerr').textContent = 'Deze afbeelding kon niet gelezen worden.'; }
+  };
+  $('#stripSave').onclick = async () => {
+    if (!file || !wins.length) return;
+    $('#stripSave').disabled = true;
+    try {
+      const fd = new FormData(); fd.append('file', file, file.name); fd.append('name', $('#stripName').value); fd.append('windows', JSON.stringify(wins)); fd.append('w', dims.w); fd.append('h', dims.h);
+      const r = await fetch('/api/templates/upload', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Upload mislukt');
+      closeModal(); toast('Fotostrip toegevoegd'); route();
+    } catch (err) { $('#eerr').textContent = err.message; $('#stripSave').disabled = false; }
+  };
+}
+
+async function editTemplate(base) {
+  const lib = await api('/stickers');
+  const isNew = !base || base.builtin;
+  const ed = {
+    id: isNew ? null : base.id,
+    name: base ? (base.builtin ? base.name + ' (eigen versie)' : base.name) : 'Mijn ontwerp',
+    d: JSON.parse(JSON.stringify(base ? Object.fromEntries(Object.keys(TPL_DEFAULT).map((k) => [k, base[k]])) : TPL_DEFAULT)),
+    shots: 3, sel: null, samples: samples(), lib,
+  };
+  const rng = (key, label, min, max, step) => `<div class="rng"><span>${label}</span><input type="range" data-k="${key}" min="${min}" max="${max}" step="${step}"><b></b></div>`;
+  $('#sheet').className = 'sheet wide';
+  $('#sheet').innerHTML = `<h2>${isNew && !base ? 'Nieuw ontwerp' : ed.id ? 'Ontwerp bewerken' : 'Ontwerp aanpassen'}</h2>
+  <div class="ed">
+    <div class="edpv">
+      <div class="pvwrap"><canvas id="pvc"></canvas><div id="stks"></div></div>
+      <div class="muted" style="margin-top:6px;font-size:12px">Sleep stickers om ze te verplaatsen.</div>
+      <div class="fin"><div class="muted" style="font-size:12px">Eindresultaat (met kanteling)</div><canvas id="fin"></canvas></div>
+    </div>
+    <div class="edctl">
+      <h4>Basis</h4>
+      <label class="f"><span>Naam van het ontwerp</span><input class="in" id="tname" maxlength="40"></label>
+      <div class="row2">
+        <label class="f"><span>Stijl</span><select class="in" data-k="style"><option value="plain">Gewoon kader</option><option value="film">Filmstrip</option></select></label>
+        <label class="f"><span>Vorm foto's in de strip</span><select class="in" data-k="aspect"><option value="4:3">Liggend (4:3)</option><option value="1:1">Vierkant</option><option value="3:4">Staand (3:4)</option></select></label>
+      </div>
+      <h4>Kleuren</h4>
+      <div class="row2">
+        <label class="f"><span>Kaderkleur</span><input type="color" id="frameColor"></label>
+        <label class="f"><span>Achtergrond (van / naar)</span><div style="display:flex;gap:6px"><input type="color" data-k="bg_color"><input type="color" data-k="bg_color2"></div></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="frameBrand"> Kaderkleur van de huisstijl van het evenement gebruiken</label>
+      <h4>Vorm</h4>
+      ${rng('photo_radius', 'Ronde hoeken foto\'s', 0, 10, 0.5)}${rng('frame_radius', 'Ronde hoeken kader', 0, 10, 0.5)}${rng('tilt', 'Kanteling (graden)', -10, 10, 1)}
+      <h4>Tekst</h4>
+      <label class="f"><span>Tekst onderaan (leeg = naam evenement)</span><input class="in" data-k="caption" maxlength="40"></label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+        <label class="chk" style="margin:0"><input type="checkbox" data-k="show_footer"> Tekstvak onderaan tonen</label>
+        <label class="chk" style="margin:0"><input type="checkbox" id="txtAuto"> Tekstkleur automatisch</label><input type="color" id="txtColor">
+      </div>
+      <h4>Stickers</h4>
+      <div class="lib" id="lib"></div>
+      <div style="margin-top:8px"><label class="btn sec sm" style="cursor:pointer">+ Eigen sticker uploaden (PNG)<input type="file" id="upl" accept="image/png,image/webp,image/jpeg" hidden></label></div>
+      <div class="selbox" id="selbox"></div>
+      <h4>Voorbeeld</h4>
+      <div class="row2">
+        <label class="f"><span>Aantal foto's in voorbeeld</span><select class="in" id="shots"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+        <label class="f"><span>Testfoto gebruiken</span><input class="in" type="file" id="testimg" accept="image/*"></label>
+      </div>
+      <div class="err" id="eerr"></div>
+      <div class="foot"><button type="button" class="btn sec" id="cancel">Annuleren</button><button type="button" class="btn" id="save">Ontwerp opslaan</button></div>
+    </div>
+  </div>`;
+  $('#modal').classList.add('show');
+  const q = (sel) => $(sel, $('#sheet'));
+
+  /* formulier <-> data */
+  const sync = () => {
+    $('#tname').value = ed.name;
+    document.querySelectorAll('#sheet [data-k]').forEach((el) => {
+      const k = el.dataset.k, v = ed.d[k];
+      if (el.type === 'checkbox') el.checked = !!v; else el.value = v;
+      if (el.type === 'range') el.nextElementSibling.textContent = v;
+    });
+    const brand = ed.d.frame_color === 'brand';
+    $('#frameBrand').checked = brand; $('#frameColor').disabled = brand; $('#frameColor').value = brand ? INFO.brand : ed.d.frame_color;
+    const auto = ed.d.text_color === 'auto';
+    $('#txtAuto').checked = auto; $('#txtColor').disabled = auto; $('#txtColor').value = auto ? '#ffffff' : ed.d.text_color;
+  };
+  document.querySelectorAll('#sheet [data-k]').forEach((el) => el.addEventListener('input', () => {
+    const k = el.dataset.k;
+    ed.d[k] = el.type === 'checkbox' ? el.checked : el.type === 'range' ? Number(el.value) : el.value;
+    if (el.type === 'range') el.nextElementSibling.textContent = el.value;
+    schedule(k !== 'tilt');
+  }));
+  $('#tname').oninput = (e) => ed.name = e.target.value;
+  $('#frameColor').oninput = (e) => { ed.d.frame_color = e.target.value; schedule(true); };
+  $('#frameBrand').onchange = (e) => { ed.d.frame_color = e.target.checked ? 'brand' : $('#frameColor').value; $('#frameColor').disabled = e.target.checked; schedule(true); };
+  $('#txtColor').oninput = (e) => { ed.d.text_color = e.target.value; schedule(true); };
+  $('#txtAuto').onchange = (e) => { ed.d.text_color = e.target.checked ? 'auto' : $('#txtColor').value; $('#txtColor').disabled = e.target.checked; schedule(true); };
+  $('#shots').onchange = (e) => { ed.shots = +e.target.value; schedule(true); };
+  $('#testimg').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1400 / img.width), c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); ed.samples = [c, c, c, c]; schedule(true);
+    };
+    img.src = URL.createObjectURL(f);
+  };
+
+  /* renderen */
+  let raf = 0, finT = 0;
+  function schedule(base) { if (base) { cancelAnimationFrame(raf); raf = requestAnimationFrame(renderBase); } clearTimeout(finT); finT = setTimeout(renderFinal, 160); }
+  function renderBase() {
+    const out = PB.renderStrip(ed.samples.slice(0, ed.shots), { ...ed.d, stickers: [] }, INFO, 'none', { untilted: true });
+    const c = q('#pvc'); c.width = out.width; c.height = out.height; c.getContext('2d').drawImage(out, 0, 0);
+    drawStickers();
+  }
+  async function renderFinal() {
+    await PB.preload([ed.d]);
+    const out = PB.renderStrip(ed.samples.slice(0, ed.shots), ed.d, INFO, 'none');
+    q('.fin').style.display = ed.d.tilt ? '' : 'none';
+    const c = q('#fin'); c.width = out.width; c.height = out.height; c.getContext('2d').drawImage(out, 0, 0);
+  }
+
+  /* stickers als sleepbare elementen bovenop het voorbeeld */
+  const stkUrl = (s) => s.src.startsWith('b:') ? PB.builtinDataUrl(s.src.slice(2), s.color) : '/media/stickers/' + encodeURIComponent(s.src.slice(2));
+  function drawStickers() {
+    q('#stks').innerHTML = ed.d.stickers.map((s, i) => `<div class="stk ${i === ed.sel ? 'sel' : ''}" data-i="${i}" style="left:${s.x * 100}%;top:${s.y * 100}%;width:${s.size * 100}%;transform:translate(-50%,-50%) rotate(${s.rot}deg)"><img src="${esc(stkUrl(s))}" alt=""></div>`).join('');
+    drawSel();
+  }
+  let drag = null;
+  q('#stks').addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.stk'); if (!el) return;
+    e.preventDefault();
+    ed.sel = +el.dataset.i;
+    const s = ed.d.stickers[ed.sel], r = q('#stks').getBoundingClientRect();
+    drag = { el, r, dx: (e.clientX - r.left) / r.width - s.x, dy: (e.clientY - r.top) / r.height - s.y };
+    el.setPointerCapture(e.pointerId);
+    q('#stks').querySelectorAll('.stk').forEach((n) => n.classList.toggle('sel', n === el));
+    drawSel();
+  });
+  q('#stks').addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const s = ed.d.stickers[ed.sel];
+    s.x = Math.min(1.15, Math.max(-0.15, (e.clientX - drag.r.left) / drag.r.width - drag.dx));
+    s.y = Math.min(1.15, Math.max(-0.15, (e.clientY - drag.r.top) / drag.r.height - drag.dy));
+    drag.el.style.left = s.x * 100 + '%'; drag.el.style.top = s.y * 100 + '%';
+  });
+  const endDrag = () => { if (drag) { drag = null; schedule(false); } };
+  q('#stks').addEventListener('pointerup', endDrag); q('#stks').addEventListener('pointercancel', endDrag);
+  q('.pvwrap').addEventListener('pointerdown', (e) => { if (!e.target.closest('.stk')) { ed.sel = null; drawStickers(); } });
+
+  function drawSel() {
+    const box = q('#selbox'), s = ed.d.stickers[ed.sel];
+    if (!s) { box.innerHTML = `<div class="muted">${ed.d.stickers.length ? 'Klik op een sticker in het voorbeeld om hem aan te passen.' : 'Klik hierboven op een sticker om hem toe te voegen.'}</div>`; return; }
+    const tint = s.src.startsWith('b:') && PB.STICKER_TINTABLE.has(s.src.slice(2));
+    box.innerHTML = `<div class="rng"><span>Grootte</span><input type="range" id="sSize" min="0.03" max="0.5" step="0.01" value="${s.size}"><b></b></div>
+      <div class="rng"><span>Draaiing</span><input type="range" id="sRot" min="-180" max="180" step="1" value="${s.rot}"><b>${s.rot}</b></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${tint ? `<input type="color" id="sCol" value="${s.color || PB.STICKER_COLORS[s.src.slice(2)]}" title="Kleur">` : ''}
+      <button class="btn sec sm" id="sDup">Kopie</button><button class="btn sec sm" id="sFront">Naar voren</button><button class="btn danger sm" id="sDel">Verwijderen</button></div>`;
+    const upd = () => { drawStickers(); schedule(false); };
+    q('#sSize').oninput = (e) => { s.size = +e.target.value; e.target.nextElementSibling.textContent = s.size; const el = q(`.stk[data-i="${ed.sel}"]`); el.style.width = s.size * 100 + '%'; schedule(false); };
+    q('#sSize').nextElementSibling.textContent = s.size;
+    q('#sRot').oninput = (e) => { s.rot = +e.target.value; e.target.nextElementSibling.textContent = s.rot; q(`.stk[data-i="${ed.sel}"]`).style.transform = `translate(-50%,-50%) rotate(${s.rot}deg)`; schedule(false); };
+    if (tint) q('#sCol').oninput = (e) => { s.color = e.target.value; q(`.stk[data-i="${ed.sel}"] img`).src = stkUrl(s); schedule(false); };
+    q('#sDup').onclick = () => { ed.d.stickers.push({ ...s, x: Math.min(1, s.x + 0.06), y: Math.min(1, s.y + 0.05) }); ed.sel = ed.d.stickers.length - 1; upd(); };
+    q('#sFront').onclick = () => { ed.d.stickers.push(ed.d.stickers.splice(ed.sel, 1)[0]); ed.sel = ed.d.stickers.length - 1; upd(); };
+    q('#sDel').onclick = () => { ed.d.stickers.splice(ed.sel, 1); ed.sel = null; upd(); };
+  }
+
+  /* sticker-bibliotheek */
+  function drawLib() {
+    q('#lib').innerHTML = PB.STICKER_NAMES.map((n) => `<div class="it" data-b="${n}" title="${PB.STICKER_LABELS[n]}"><img src="${PB.builtinDataUrl(n)}" alt="${PB.STICKER_LABELS[n]}"></div>`).join('')
+      + ed.lib.map((u) => `<div class="it" data-u="${esc(u.filename)}" title="Eigen sticker"><img src="${esc(u.url)}" alt=""><button data-del="${esc(u.id)}" title="Sticker verwijderen">×</button></div>`).join('');
+  }
+  q('#lib').addEventListener('click', async (e) => {
+    const del = e.target.closest('button[data-del]');
+    if (del) {
+      e.stopPropagation();
+      if (!confirm('Deze eigen sticker verwijderen? Hij verdwijnt ook uit alle ontwerpen.')) return;
+      const u = ed.lib.find((x) => x.id === del.dataset.del);
+      await api('/stickers/' + u.id, { method: 'DELETE' });
+      ed.lib = ed.lib.filter((x) => x.id !== u.id); ed.d.stickers = ed.d.stickers.filter((s) => s.src !== u.src); PB.forgetSticker(u.src); ed.sel = null; drawLib(); drawStickers(); schedule(false); return;
+    }
+    const it = e.target.closest('.it'); if (!it) return;
+    const src = it.dataset.b ? 'b:' + it.dataset.b : 'u:' + it.dataset.u;
+    const off = (ed.d.stickers.length % 5) * 0.03;
+    ed.d.stickers.push({ src, x: 0.5 + off, y: 0.35 + off, size: 0.16, rot: 0 }); ed.sel = ed.d.stickers.length - 1;
+    drawStickers(); schedule(false);
+  });
+  q('#upl').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(f); });
+      const k = Math.min(1, 640 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      const blob = await new Promise((res) => c.toBlob(res, 'image/png'));
+      const fd = new FormData(); fd.append('file', blob, 'sticker.png');
+      const r = await fetch('/api/stickers', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Upload mislukt');
+      ed.lib.unshift(j); drawLib(); toast('Sticker toegevoegd');
+    } catch (err) { q('#eerr').textContent = 'Sticker uploaden mislukt: ' + err.message; }
+  };
+
+  q('#cancel').onclick = closeModal;
+  q('#save').onclick = async () => {
+    const name = ed.name.trim(); if (!name) { q('#eerr').textContent = 'Geef het ontwerp een naam'; return; }
+    try {
+      await api(ed.id ? '/templates/' + ed.id : '/templates', { method: ed.id ? 'PUT' : 'POST', body: { name, data: ed.d } });
+      closeModal(); toast('Ontwerp opgeslagen'); route();
+    } catch (err) { q('#eerr').textContent = err.message; }
+  };
+
+  sync(); drawLib();
+  await PB.preload([ed.d]);
+  renderBase(); renderFinal();
+}
+$('#modal').addEventListener('mousedown', () => {});
+
+/* Terugknop naar het evenementformulier (als je vanuit "Evenement bewerken" hierheen kwam) */
+function backToEventBtn() {
+  let r = null; try { r = JSON.parse(sessionStorage.getItem('pbReturn') || 'null'); } catch {}
+  if (!r) return '';
+  return `<div style="margin:0 0 6px"><button class="btn sec" id="backEvent">← Terug naar evenement bewerken${r.name ? ': ' + esc(r.name) : ''}</button></div>`;
+}
+function wireBackToEvent() {
+  const b = $('#backEvent'); if (!b) return;
+  b.onclick = () => {
+    let r = null; try { r = JSON.parse(sessionStorage.getItem('pbReturn') || 'null'); } catch {}
+    resumeDraft = true;
+    if (r && r.id) { location.hash = '#/event/' + r.id + '/edit'; }
+    else { location.hash = '#/new'; }
+  };
+}
+
+/* ---------- 360° extra's: muziek + videokaders ---------- */
+async function videoPage() {
+  const [music, frames] = await Promise.all([api('/music'), api('/frames')]);
+  const builtin = Object.entries(PB.VIDEO_FRAME_LABELS).map(([id, name]) => ({ id, name, builtin: true }));
+  const fr = builtin.concat(frames);
+  shell(`${backToEventBtn()}<div class="bar"><div><h2>360° extra's</h2><div class="muted">Voeg eigen muziek en videokaders (filmstrips) toe. Bij elk 360°-evenement kies je één nummer en één kader; elke video krijgt die muziek en dat kader automatisch.</div></div></div>
+    <div class="bar" style="margin-top:22px"><div><h3 style="margin:0">Muziek</h3><div class="muted">MP3, M4A, WAV of OGG, maximaal 25 MB. Het nummer wordt in een lus onder de video gemixt en fade-out aan het einde.</div></div>
+      <label class="btn" style="cursor:pointer">+ Muziek uploaden<input type="file" id="upMusic" accept="audio/*,.mp3,.m4a,.wav,.ogg" hidden></label></div>
+    <div class="list" id="musicList">${music.length ? music.map((m) => `<div class="row" style="display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:20px">🎵</span><b style="flex:1;min-width:120px">${esc(m.name)}</b><span class="muted">${fmtBytes(m.size)}</span>
+      <audio controls preload="none" src="${esc(m.url)}" style="height:36px;max-width:260px"></audio>
+      <button class="btn danger sm" data-dm="${esc(m.id)}">Verwijderen</button></div>`).join('') : '<div class="empty" style="padding:24px">Nog geen muziek. Upload je eerste nummer.</div>'}</div>
+    <div class="bar" style="margin-top:30px"><div><h3 style="margin:0">Videokaders (filmstrips)</h3><div class="muted">Upload een PNG of WebP met transparante achtergrond, bij voorkeur 1920×1080 (16:9). Het kader wordt over de hele video gelegd.</div></div>
+      <label class="btn" style="cursor:pointer">+ Kader uploaden<input type="file" id="upFrame" accept="image/png,image/webp" hidden></label></div>
+    <div class="tpls" id="frameGrid">${fr.map((f) => `<div class="tpl"><div class="pv" style="height:auto;padding:14px"><canvas data-f="${esc(f.id)}"></canvas></div>
+      <div class="body"><b>${esc(f.name)}</b><span class="pill">${f.builtin ? 'Ingebouwd' : 'Eigen'}</span></div>
+      <div class="acts">${f.builtin ? '' : `<button class="btn danger sm" data-df="${esc(f.id)}">Verwijderen</button>`}</div></div>`).join('')}</div>`);
+  wireBackToEvent();
+  $('#upMusic').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const fd = new FormData(); fd.append('file', f, f.name);
+      const r = await fetch('/api/music', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Upload mislukt');
+      toast('Muziek toegevoegd'); route();
+    } catch (err) { toast('Mislukt: ' + err.message); }
+  };
+  $('#upFrame').onchange = async (e) => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const fd = new FormData(); fd.append('file', f, f.name);
+      const r = await fetch('/api/frames', { method: 'POST', body: fd, credentials: 'same-origin' });
+      const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Upload mislukt');
+      toast('Kader toegevoegd'); route();
+    } catch (err) { toast('Mislukt: ' + err.message); }
+  };
+  root.querySelectorAll('[data-dm]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Dit nummer verwijderen? Evenementen die het gebruiken krijgen geen muziek meer.')) return;
+    await api('/music/' + b.dataset.dm, { method: 'DELETE' }); toast('Verwijderd'); route();
+  });
+  root.querySelectorAll('[data-df]').forEach((b) => b.onclick = async () => {
+    if (!confirm('Dit kader verwijderen? Evenementen die het gebruiken krijgen geen kader meer.')) return;
+    await api('/frames/' + b.dataset.df, { method: 'DELETE' }); toast('Verwijderd'); route();
+  });
+  const sample = PB.sampleShot(1);
+  for (const cv of root.querySelectorAll('canvas[data-f]')) {
+    const f = fr.find((x) => x.id === cv.dataset.f);
+    const w = 480, h = 270; cv.width = w; cv.height = h;
+    const x = cv.getContext('2d');
+    x.fillStyle = '#ddd'; x.fillRect(0, 0, w, h);
+    const cr = PB.coverCrop(sample.width, sample.height, w / h);
+    x.drawImage(sample, cr.sx, cr.sy, cr.sw, cr.sh, 0, 0, w, h);
+    if (f.builtin) PB.drawVideoFrame(x, w, h, { kind: 'builtin', id: f.id }, INFO);
+    else { const img = await PB.loadFrameImage(f.url); if (img) x.drawImage(img, 0, 0, w, h); }
+  }
+}
+
+/* ---------- router ---------- */
+async function route() {
+  try {
+    const me = await api('/me');
+    if (!me.admin) return showLogin();
+    const m = location.hash.match(/^#\/event\/(\d+)/);
+    if (m) await eventPage(+m[1]); else if (location.hash.startsWith('#/templates')) await templatesPage(); else if (location.hash.startsWith('#/video')) await videoPage(); else if (location.hash === '#/new') { await dashboard(); history.replaceState(null, '', '#/'); editEvent(); } else await dashboard();
+  } catch (e) { if (e.message !== 'login') root.innerHTML = `<main><div class="empty">${esc(e.message)}</div></main>`; }
+}
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
